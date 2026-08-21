@@ -434,7 +434,19 @@ class Qwen38VisionChat:
                 f"images={len(image_frames)}\nvideo_frames={len(video_frames)}"
             )
             print(f"[Qwen3.8 Vision] Generation finished: {elapsed:.2f}s, {speed:.2f} tok/s")
-            return response, reasoning, raw, stats
+            # Keep the normal tuple outputs so the response can be wired into
+            # any STRING node, and also expose the result in ComfyUI's output
+            # panel.  OUTPUT_NODE nodes that return only a tuple execute
+            # successfully but have no history/UI payload to display.
+            return {
+                "ui": {
+                    "text": (response,),
+                    "reasoning": (reasoning,),
+                    "raw_response": (raw,),
+                    "stats": (stats,),
+                },
+                "result": (response, reasoning, raw, stats),
+            }
         finally:
             if unload_after:
                 model.unload()
@@ -453,7 +465,8 @@ class Qwen38Unload:
 
     def unload(self, model: Qwen38Runtime):
         model.unload()
-        return ("Qwen3.8 model unloaded",)
+        status = "Qwen3.8 model unloaded"
+        return {"ui": {"text": (status,)}, "result": (status,)}
 
 
 NODE_CLASS_MAPPINGS = {
@@ -467,4 +480,3 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Qwen38VisionChat": "Qwen3.8 Vision Chat",
     "Qwen38Unload": "Qwen3.8 Unload Model",
 }
-
