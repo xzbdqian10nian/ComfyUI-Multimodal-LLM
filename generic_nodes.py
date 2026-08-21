@@ -13,7 +13,12 @@ from typing import Any
 
 import torch
 
-from .backends import BackendError, OpenAICompatibleBackend
+from .backends import (
+    BackendError,
+    LocalQwen38Backend,
+    LocalRuntimeSettings,
+    OpenAICompatibleBackend,
+)
 from .media import (
     encode_video_data_url,
     extract_video_frames,
@@ -21,7 +26,7 @@ from .media import (
     sample_image_batch,
     tensor_frame_to_pil,
 )
-from .nodes import Qwen38ModelLoader
+from .nodes import Qwen38ModelLoader, _resolve_file
 
 
 def _to_plain(value: Any) -> Any:
@@ -250,6 +255,34 @@ class MultimodalQwen38Loader(Qwen38ModelLoader):
     RETURN_TYPES = ("MLLM_BACKEND", "STRING")
     RETURN_NAMES = ("backend", "backend_info")
     CATEGORY = "Multimodal LLM/Backends"
+
+    def load_model(
+        self,
+        model_file: str,
+        mmproj_file: str,
+        thinking_mode: str,
+        context_length: int,
+        batch_size: int,
+        micro_batch_size: int,
+        gpu_layers: int,
+        free_comfy_vram: bool,
+    ):
+        model_path = _resolve_file(model_file, "model")
+        mmproj_path = _resolve_file(mmproj_file, "mmproj")
+        backend = LocalQwen38Backend(
+            LocalRuntimeSettings(
+                model_path=model_path,
+                mmproj_path=mmproj_path,
+                n_ctx=int(context_length),
+                n_batch=int(batch_size),
+                n_ubatch=int(micro_batch_size),
+                n_gpu_layers=int(gpu_layers),
+                thinking=thinking_mode == "thinking",
+                free_comfy_vram=bool(free_comfy_vram),
+            )
+        )
+        backend.ensure_loaded()
+        return backend, backend.info()
 
 
 class MultimodalAPIBackend:
