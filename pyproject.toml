@@ -1,11 +1,10 @@
 [project]
-name = "ComfyUI-Qwen3.8-Vision"
-version = "0.1.0"
-description = "Local Qwen3.8 vision-language GGUF nodes for ComfyUI"
+name = "ComfyUI-Multimodal-LLM"
+version = "0.2.0"
+description = "Local and OpenAI-compatible multimodal LLM nodes for ComfyUI"
 requires-python = ">=3.10"
 dependencies = ["diskcache>=5.6.2,<6"]
 
 [tool.comfy]
 PublisherId = "xzbd10"
-DisplayName = "Qwen3.8 Vision LLM"
-
+DisplayName = "Multimodal LLM"

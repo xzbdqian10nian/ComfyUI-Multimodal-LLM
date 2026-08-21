@@ -1,6 +1,17 @@
-"""ComfyUI nodes for local Qwen3.8 vision-language inference."""
+"""ComfyUI nodes for local and API-backed multimodal LLM inference."""
 
-from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
+from .generic_nodes import (
+    NODE_CLASS_MAPPINGS as GENERIC_NODE_CLASS_MAPPINGS,
+    NODE_DISPLAY_NAME_MAPPINGS as GENERIC_NODE_DISPLAY_NAME_MAPPINGS,
+)
+from .nodes import NODE_CLASS_MAPPINGS as LEGACY_NODE_CLASS_MAPPINGS
+from .nodes import NODE_DISPLAY_NAME_MAPPINGS as LEGACY_NODE_DISPLAY_NAME_MAPPINGS
+
+# Keep the original class IDs so existing Qwen3.8 workflows continue to load.
+NODE_CLASS_MAPPINGS = {**LEGACY_NODE_CLASS_MAPPINGS, **GENERIC_NODE_CLASS_MAPPINGS}
+NODE_DISPLAY_NAME_MAPPINGS = {
+    **LEGACY_NODE_DISPLAY_NAME_MAPPINGS,
+    **GENERIC_NODE_DISPLAY_NAME_MAPPINGS,
+}
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
-

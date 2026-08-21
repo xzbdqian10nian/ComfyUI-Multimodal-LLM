@@ -165,6 +165,11 @@ class RuntimeSettings:
 class Qwen38Runtime:
     """Owns one llama.cpp model and its multimodal projector."""
 
+    # Shared socket marker used by the generic Multimodal Chat node.  The
+    # class itself is intentionally retained so old Qwen3.8 workflows keep
+    # working without changing their execution semantics.
+    backend_kind = "local_llama_cpp"
+
     def __init__(self, settings: RuntimeSettings):
         self.settings = settings
         self.llm = None
