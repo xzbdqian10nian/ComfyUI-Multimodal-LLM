@@ -102,6 +102,9 @@ export OPENAI_API_KEY='your-api-key'
 ### 参数行为
 
 - `max_tokens=0`：不发送 `max_tokens`，使用服务商默认值；
+- 此时 API 没有可用于精确计算的输出总量，进度条每累计约 2000 个流式
+  token/chunk 前进 1%，最高停在 99%，服务商正常结束响应后再到 100%；
+- 明确填写 `max_tokens` 时，进度条仍按该输出上限推进；
 - `temperature=0`：不发送 `temperature`，使用服务商默认值；
 - `seed`：发送随机种子；支持 ComfyUI 的生成后固定、递增、递减和随机选项，
   API 服务商支持 `seed` 时可用于尽量复现采样；

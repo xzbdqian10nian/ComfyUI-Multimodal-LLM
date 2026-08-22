@@ -27,6 +27,23 @@ from .nodes import _choices, _resolve_file
 from .progress import ConsoleProgressBar, StatusTicker, make_progress, send_status, update_progress
 
 
+API_AUTO_PROGRESS_CHUNKS_PER_PERCENT = 2000
+
+
+def _api_progress_value(streamed_chunks: int, requested_max_tokens: int) -> tuple[int, int]:
+    """Map an API stream count onto a progress value without fake precision."""
+    count = max(0, int(streamed_chunks))
+    requested = max(0, int(requested_max_tokens))
+    if requested > 0:
+        # Reserve the final step for a confirmed completed response.
+        return min(count, max(0, requested - 1)), requested
+    # With a provider-controlled output limit there is no real denominator.
+    # Advance slowly enough for long-context responses and stop at 99% until
+    # the server emits a normal completion.
+    percent = min(count // API_AUTO_PROGRESS_CHUNKS_PER_PERCENT, 99)
+    return percent, 100
+
+
 def _to_plain(value: Any) -> Any:
     if isinstance(value, dict):
         return {str(k): _to_plain(v) for k, v in value.items()}
@@ -587,9 +604,10 @@ class _MultimodalAPINodeBase:
             timeout=120.0,
         )
         requested_max_tokens = int(max_tokens)
-        # If max_tokens is omitted (0), use an approximate UI scale while
-        # keeping 0 intact in the request so the API applies its own default.
-        progress_total = requested_max_tokens if requested_max_tokens > 0 else 100
+        # Keep 0 intact in the request so the API applies its own default. The
+        # helper then uses a deliberately slow approximate scale because the
+        # provider has not exposed a real output denominator.
+        _, progress_total = _api_progress_value(0, requested_max_tokens)
         progress = make_progress(progress_total, unique_id)
         log_progress = ConsoleProgressBar("API generation", progress_total)
         ticker = StatusTicker(unique_id)
@@ -597,7 +615,7 @@ class _MultimodalAPINodeBase:
         ticker.send("Preparing API request…", force=True)
 
         def report_token(count: int):
-            visible = min(max(1, int(count)), progress_total - 1) if progress_total > 1 else 1
+            visible, _ = _api_progress_value(count, requested_max_tokens)
             update_progress(progress, visible, progress_total)
             log_progress.update(visible, suffix=f"{count} streamed chunks")
             ticker.send(
