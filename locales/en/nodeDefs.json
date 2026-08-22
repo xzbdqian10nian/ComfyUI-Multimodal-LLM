@@ -177,7 +177,7 @@
       },
       "max_tokens": {
         "name": "max tokens",
-        "tooltip": "Maximum number of new text tokens to generate."
+        "tooltip": "Maximum number of new text tokens to generate; this is only a limit and generation stops early when the answer is complete."
       },
       "temperature": {
         "name": "temperature",

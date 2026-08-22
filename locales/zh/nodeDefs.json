@@ -177,7 +177,7 @@
       },
       "max_tokens": {
         "name": "最大输出 Tokens",
-        "tooltip": "本次最多生成多少个新文本 token。"
+        "tooltip": "本次最多生成多少个新文本 token；这是上限，模型正常结束回答时会提前停止。"
       },
       "temperature": {
         "name": "随机度",

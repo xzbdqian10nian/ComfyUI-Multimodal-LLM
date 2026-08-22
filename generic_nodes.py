@@ -675,7 +675,7 @@ class MultimodalChat:
                         "tooltip": "Local llama.cpp context window for prompt, media tokens, and response. Changing it reloads the local model.",
                     },
                 ),
-                "max_tokens": ("INT", {"default": 1024, "min": 16, "max": 32768, "step": 16, "tooltip": "Maximum number of new text tokens to generate."}),
+                "max_tokens": ("INT", {"default": 4096, "min": 16, "max": 32768, "step": 16, "tooltip": "Maximum number of new text tokens to generate. Generation still stops normally when the model finishes its answer."}),
                 "temperature": ("FLOAT", {"default": 0.6, "min": 0.0, "max": 2.0, "step": 0.05, "tooltip": "Sampling randomness. Lower values are steadier; higher values are more varied."}),
                 "top_p": ("FLOAT", {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Nucleus sampling threshold. 0.95 is a strong general default."}),
                 "top_k": ("INT", {"default": 40, "min": 0, "max": 200, "tooltip": "Restrict each token choice to the top K candidates. 0 disables it when supported."}),

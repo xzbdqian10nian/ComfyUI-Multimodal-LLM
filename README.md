@@ -67,6 +67,10 @@ ComfyUI/models/LLM/Qwen3.8/
 Multimodel Local Qwen3.8 Loader ──► Multimodel Chat
 ```
 
+`Multimodel Chat` 默认 `max_tokens=4096`，用于避免长结构化回答在 1024 tokens
+附近被截断。它只是最大输出上限；简单问题在模型生成结束标记后仍会提前停止，
+不会被强制扩写到 4096 tokens。
+
 对 32GB 显存设备，Q4_K_M 是建议的起点。更高精度模型需要按显存和上下文
 长度重新评估；不同平台请安装与自身 CUDA/CPU 匹配的
 `llama-cpp-python`，插件不会替换 Torch、CUDA 或显卡驱动。
