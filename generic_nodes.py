@@ -187,6 +187,14 @@ def _split_message(message: dict[str, Any]) -> tuple[str, str, str]:
         if marker:
             reasoning = thought.strip()
             content = (before + after).strip()
+    elif not reasoning and "</think>" in content:
+        # llama.cpp/Qwen can prefill the opening <think> token in the assistant
+        # template.  Generated text then contains only the closing marker.  In
+        # that representation everything before </think> is still reasoning,
+        # not part of the response consumed by downstream ComfyUI nodes.
+        thought, _, after = content.partition("</think>")
+        reasoning = thought.strip()
+        content = after.strip()
     content = content.replace("<|im_end|>", "").replace("<|im_start|>", "").strip()
     return content, reasoning.strip(), raw
 
