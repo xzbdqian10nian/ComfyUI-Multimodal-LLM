@@ -11,14 +11,6 @@
         "name": "视觉投影模型",
         "tooltip": "图片与视频帧理解必需的多模态 projector GGUF 文件。"
       },
-      "thinking_mode": {
-        "name": "思考模式",
-        "tooltip": "thinking 会启用内部推理；instruct 更快、更直接。"
-      },
-      "context_length": {
-        "name": "上下文长度",
-        "tooltip": "提示词与输出合计可使用的最大 token 窗口。数值越大，KV Cache 占用越高。"
-      },
       "batch_size": {
         "name": "批处理大小",
         "tooltip": "提示词预填充批次大小。调高可能更快，但会增加显存占用。"
@@ -29,7 +21,7 @@
       },
       "gpu_layers": {
         "name": "GPU 层数",
-        "tooltip": "卸载到 GPU 的模型层数。-1 表示全部放到 GPU，RTX 5090 推荐使用 -1。"
+        "tooltip": "卸载到 GPU 的模型层数。-1 表示全部放到 GPU；需要部分卸载时可调低。"
       },
       "free_comfy_vram": {
         "name": "释放 ComfyUI 显存",
@@ -43,7 +35,7 @@
       },
       "1": {
         "name": "后端信息",
-        "tooltip": "实际模型、上下文、GPU 层数、模式和加载耗时。"
+        "tooltip": "实际选择的主模型、视觉投影模型、GPU 层数和后端状态。"
       }
     }
   },
@@ -86,14 +78,6 @@
       "image": {
         "name": "可选图像批次",
         "tooltip": "可接单张图片或 IMAGE 批次；批次中的每张图会在同一个 API 请求中发送。"
-      },
-      "max_image_edge": {
-        "name": "图片最长边",
-        "tooltip": "上传前将每张图片最长边缩放到不超过此像素值。"
-      },
-      "max_image_frames": {
-        "name": "最多图片数",
-        "tooltip": "本次请求最多从 IMAGE 批次中发送多少张图片。"
       }
     },
     "outputs": {
@@ -147,14 +131,6 @@
         "name": "可选图像批次",
         "tooltip": "可接单张图片或 IMAGE 批次；批次中的每张图会在同一个 API 请求中发送。"
       },
-      "max_image_edge": {
-        "name": "图片最长边",
-        "tooltip": "上传前将每张图片最长边缩放到不超过此像素值。"
-      },
-      "max_image_frames": {
-        "name": "最多图片数",
-        "tooltip": "本次请求最多从 IMAGE 批次中发送多少张图片。"
-      },
       "api_key": {
         "name": "API 密钥",
         "tooltip": "本次请求使用的 API 密钥，不读取环境变量。"
@@ -195,6 +171,10 @@
         "name": "思考模式",
         "tooltip": "使用后端默认设置，或强制开启 thinking / instruct 模式。"
       },
+      "context_length": {
+        "name": "上下文长度",
+        "tooltip": "本地 llama.cpp 用于提示词、媒体 token 和回答的上下文窗口；修改后会重新加载本地模型。"
+      },
       "max_tokens": {
         "name": "最大输出 Tokens",
         "tooltip": "本次最多生成多少个新文本 token。"
@@ -222,14 +202,6 @@
       "seed": {
         "name": "随机种子",
         "tooltip": "其他输入一致时用于复现采样结果；可使用 ComfyUI 的生成后固定、递增、递减或随机选项。"
-      },
-      "max_image_edge": {
-        "name": "图片最长边",
-        "tooltip": "将每张图片或视频帧的最长边缩放到不超过此像素值。"
-      },
-      "max_image_frames": {
-        "name": "最多图片数",
-        "tooltip": "作为静态图片发送的 IMAGE 批次最大数量。"
       },
       "max_video_frames": {
         "name": "最多视频帧数",

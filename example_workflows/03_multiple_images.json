@@ -26,7 +26,7 @@
         "cnr_id": "comfy-core"
       },
       "widgets_values": [
-        "## 多图理解\n用 Batch Images 合并多张图片，再连接 Chat 的 image 输入。可继续串联更多 Batch Images；max_image_frames 控制最多读取几张。"
+        "## 多图理解\n用 Batch Images 合并多张图片，再连接 Chat 的 image 输入。可继续串联更多 Batch Images；插件会发送整个 IMAGE 批次。"
       ],
       "color": "#243447",
       "bgcolor": "#31465c"
@@ -133,8 +133,6 @@
       "widgets_values": [
         "Qwen3.8-27B-UD-Q4_K_M.gguf",
         "mmproj-BF16.gguf",
-        "instruct",
-        8192,
         1024,
         512,
         -1,
@@ -491,6 +489,7 @@
         "请分别描述两张图片，并比较人物、场景和画面风格。",
         "你是运行在 ComfyUI 中的专业多模态助手。请准确、直接地回答。",
         "backend_default",
+        8192,
         512,
         0.7,
         0.8,
@@ -499,8 +498,6 @@
         1.0,
         1,
         "fixed",
-        1024,
-        8,
         4,
         "frames",
         false,

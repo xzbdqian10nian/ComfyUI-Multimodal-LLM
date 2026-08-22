@@ -4,8 +4,9 @@
 OpenAI-compatible API 两种后端，并通过同一个 `MLLM_BACKEND` 接口连接
 `Multimodel Chat`。
 
-插件只注册一套 `Multimodel` 节点，不创建 Python 虚拟环境，不升级 Torch、
-CUDA 或显卡驱动。优先复用镜像中已有的 CUDA llama.cpp 和 API 依赖。
+插件只注册一套 `Multimodel` 节点。模型路径通过 ComfyUI 官方的
+`folder_paths.models_dir` 获取，不写死操作系统、云平台、用户目录、显卡型号或
+存储挂载点；适用于标准 ComfyUI、整合包及云端部署。
 
 ## 节点
 
@@ -66,8 +67,9 @@ ComfyUI/models/LLM/Qwen3.8/
 Multimodel Local Qwen3.8 Loader ──► Multimodel Chat
 ```
 
-5090/32GB 的 Q4_K_M 是当前兼容性基线。更高精度模型需要按照显存和上下文
-长度重新评估；插件本身不会自动替换 Torch、CUDA、驱动或 llama.cpp wheel。
+对 32GB 显存设备，Q4_K_M 是建议的起点。更高精度模型需要按显存和上下文
+长度重新评估；不同平台请安装与自身 CUDA/CPU 匹配的
+`llama-cpp-python`，插件不会替换 Torch、CUDA 或显卡驱动。
 
 ## API 后端
 
@@ -106,7 +108,7 @@ export OPENAI_API_KEY='your-api-key'
 - 单张图片直接连接 `image`；
 - 多张图片使用 ComfyUI 的 Image Batch 或其他批量图像节点，作为一个
   `IMAGE` 批次连接；
-- `max_image_frames` 控制一次请求最多取多少张图片，默认 8 张；
+- 插件不缩放图片，也不截断 IMAGE 批次；需要缩放或限制数量时，在上游连接 ComfyUI 图像处理节点；
 - 视频可接 `video_frames`，插件会按 `max_video_frames` 均匀抽帧；
 - 本地 llama.cpp 后端始终使用视频帧，API 后端根据 `video_transport` 选择
   兼容的视频数据或抽帧方式。
@@ -158,8 +160,9 @@ git clone https://github.com/xzbdqian10nian/ComfyUI-Multimodal-LLM.git
 git -C ComfyUI-Multimodal-LLM pull --ff-only
 ```
 
-然后重启 ComfyUI。插件只使用镜像现有依赖；只有在实际缺少 API 或本地后端
-依赖时，才按镜像维护策略补装，不要为了本插件单独创建新环境。
+然后重启 ComfyUI。API 功能使用 `openai` SDK（缺少时有标准库回退）；本地
+GGUF 推理需要与用户自身 CPU/CUDA 平台匹配的 `llama-cpp-python`。由于
+CUDA wheel 与系统组合有关，本仓库不强行把用户环境替换为某个云平台的版本。
 
 ## 问题排查
 

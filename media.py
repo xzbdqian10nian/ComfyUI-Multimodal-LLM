@@ -14,7 +14,7 @@ import torch
 from PIL import Image
 
 
-def tensor_frame_to_pil(frame: torch.Tensor, max_edge: int = 0) -> Image.Image:
+def tensor_frame_to_pil(frame: torch.Tensor) -> Image.Image:
     """Convert a ComfyUI IMAGE frame (HWC or BHWC) into an RGB PIL image."""
     if frame.ndim == 4:
         frame = frame[0]
@@ -25,12 +25,18 @@ def tensor_frame_to_pil(frame: torch.Tensor, max_edge: int = 0) -> Image.Image:
         array = array[..., :3]
     if array.shape[-1] != 3:
         raise ValueError(f"IMAGE needs 3 RGB channels, got shape {array.shape}")
-    image = Image.fromarray(array, mode="RGB")
-    if max_edge > 0 and max(image.size) > max_edge:
-        scale = max_edge / max(image.size)
-        size = (max(1, round(image.width * scale)), max(1, round(image.height * scale)))
-        image = image.resize(size, Image.Resampling.LANCZOS)
-    return image
+    return Image.fromarray(array, mode="RGB")
+
+
+def image_batch_frames(batch: torch.Tensor | None) -> list[torch.Tensor]:
+    """Return every frame from a ComfyUI IMAGE batch without resizing."""
+    if batch is None:
+        return []
+    if batch.ndim == 3:
+        return [batch]
+    if batch.ndim != 4:
+        raise ValueError(f"Expected IMAGE batch in BHWC format, got {tuple(batch.shape)}")
+    return [batch[i] for i in range(int(batch.shape[0]))]
 
 
 def sample_image_batch(batch: torch.Tensor | None, count: int) -> list[torch.Tensor]:
@@ -136,7 +142,7 @@ def encode_video_data_url(video: Any, max_bytes: int = 256 * 1024 * 1024) -> str
     return f"data:video/mp4;base64,{payload}"
 
 
-def extract_video_frames(video: Any, max_frames: int, max_edge: int = 1024) -> list[Image.Image]:
+def extract_video_frames(video: Any, max_frames: int) -> list[Image.Image]:
     """Decode evenly sampled frames for local VLM backends.
 
     API backends normally send the original VIDEO as ``video_url``.  Local
@@ -177,15 +183,4 @@ def extract_video_frames(video: Any, max_frames: int, max_edge: int = 1024) -> l
         if not frames:
             raise ValueError("VIDEO input contains no decodable frames")
 
-    if max_edge > 0:
-        resized: list[Image.Image] = []
-        for image in frames:
-            if max(image.size) > max_edge:
-                scale = max_edge / max(image.size)
-                image = image.resize(
-                    (max(1, round(image.width * scale)), max(1, round(image.height * scale))),
-                    Image.Resampling.LANCZOS,
-                )
-            resized.append(image)
-        frames = resized
     return frames

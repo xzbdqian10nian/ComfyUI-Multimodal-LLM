@@ -27,5 +27,5 @@
       "profile": "Reduced-refusal community variant; Hugging Face access approval may be required."
     }
   ],
-  "notes": "The model directory is resolved from ComfyUI's own models directory. Q4_K_M is the first compatibility baseline for RTX 5090 32GB."
+  "notes": "The directory is resolved from ComfyUI's models directory. Q4_K_M is the recommended starting point for 32 GB VRAM; requirements vary by context and offload settings."
 }

@@ -80,7 +80,9 @@ def _resolve_file(filename: str, kind: str) -> Path:
         raise RuntimeError(f"{kind} is still downloading: {path}")
     if not path.is_file():
         raise FileNotFoundError(f"{kind} not found: {path}")
-    return path.resolve()
+    # Keep ComfyUI's configured path instead of exposing the target of a
+    # platform-specific storage symlink in errors and status messages.
+    return path.absolute()
 
 
 __all__ = ["_choices", "_resolve_file"]

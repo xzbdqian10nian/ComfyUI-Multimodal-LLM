@@ -18,6 +18,7 @@ from .backends import (
 from .media import (
     encode_video_data_url,
     extract_video_frames,
+    image_batch_frames,
     pil_to_data_url,
     sample_image_batch,
     tensor_frame_to_pil,
@@ -209,8 +210,6 @@ def _build_content(
     image: torch.Tensor | None,
     video_frames: torch.Tensor | None,
     video: Any | None,
-    max_image_edge: int,
-    max_image_frames: int,
     max_video_frames: int,
     video_transport: str,
     api_backend: bool,
@@ -218,11 +217,11 @@ def _build_content(
     content: list[dict[str, Any]] = []
 
     if image is not None:
-        frames = sample_image_batch(image, max_image_frames)
+        frames = image_batch_frames(image)
         for index, frame in enumerate(frames, 1):
             if len(frames) > 1:
                 content.append({"type": "text", "text": f"Image {index}/{len(frames)}:"})
-            pil = tensor_frame_to_pil(frame, max_image_edge)
+            pil = tensor_frame_to_pil(frame)
             content.append({"type": "image_url", "image_url": {"url": pil_to_data_url(pil)}})
 
     # A VIDEO object can be sent as a native data URL to APIs that implement
@@ -246,10 +245,10 @@ def _build_content(
         frames = sample_image_batch(video_frames, max_video_frames)
         for index, frame in enumerate(frames, 1):
             content.append({"type": "text", "text": f"Video frame {index}/{len(frames)}:"})
-            pil = tensor_frame_to_pil(frame, max_image_edge)
+            pil = tensor_frame_to_pil(frame)
             content.append({"type": "image_url", "image_url": {"url": pil_to_data_url(pil, 85)}})
     elif video is not None and not use_native_video:
-        frames = extract_video_frames(video, max_video_frames, max_image_edge)
+        frames = extract_video_frames(video, max_video_frames)
         for index, pil in enumerate(frames, 1):
             content.append({"type": "text", "text": f"Video frame {index}/{len(frames)}:"})
             content.append({"type": "image_url", "image_url": {"url": pil_to_data_url(pil, 85)}})
@@ -269,8 +268,6 @@ def _run_chat(
     min_p: float,
     repeat_penalty: float,
     seed: int,
-    max_image_edge: int,
-    max_image_frames: int,
     max_video_frames: int,
     video_transport: str,
     thinking_mode: str,
@@ -286,8 +283,6 @@ def _run_chat(
         image,
         video_frames,
         video,
-        int(max_image_edge),
-        int(max_image_frames),
         int(max_video_frames),
         video_transport,
         is_api,
@@ -326,7 +321,7 @@ def _run_chat(
         raw = json.dumps(message, ensure_ascii=False, indent=2)
     completion_tokens = int(usage.get("completion_tokens") or 0)
     speed = completion_tokens / elapsed if completion_tokens and elapsed > 0 else 0.0
-    image_count = len(sample_image_batch(image, max_image_frames)) if image is not None else 0
+    image_count = len(image_batch_frames(image)) if image is not None else 0
     video_frame_count = len(sample_image_batch(video_frames, max_video_frames)) if video_frames is not None else 0
     stats = (
         f"time={elapsed:.2f}s\n"
@@ -345,7 +340,7 @@ class MultimodalQwen38Loader:
     RETURN_NAMES = ("backend", "backend_info")
     OUTPUT_TOOLTIPS = (
         "Loaded local multimodal model backend for the Multimodel Chat node.",
-        "Resolved model, context, GPU layers, mode, and load time.",
+        "Resolved model, projector, GPU layers, and backend state.",
     )
     CATEGORY = "Multimodel LLM/Backends"
     DESCRIPTION = "Loads a local Qwen3.8 GGUF model and its vision projector with CUDA llama.cpp."
@@ -367,20 +362,6 @@ class MultimodalQwen38Loader:
                     {
                         "default": cls._mmproj_choices()[0],
                         "tooltip": "Multimodal projector GGUF required for image and video-frame understanding.",
-                    },
-                ),
-                "thinking_mode": (
-                    ["thinking", "instruct"],
-                    {"default": "thinking", "tooltip": "Thinking enables internal reasoning; instruct is faster and more direct."},
-                ),
-                "context_length": (
-                    "INT",
-                    {
-                        "default": 8192,
-                        "min": 2048,
-                        "max": 262144,
-                        "step": 1024,
-                        "tooltip": "Maximum prompt plus response token window. Larger values reserve more KV-cache memory.",
                     },
                 ),
                 "batch_size": (
@@ -409,7 +390,7 @@ class MultimodalQwen38Loader:
                         "default": -1,
                         "min": -1,
                         "max": 256,
-                        "tooltip": "Layers offloaded to GPU. -1 means all layers and is recommended for the RTX 5090.",
+                        "tooltip": "Layers offloaded to GPU. -1 offloads all layers; lower it when partial GPU offload is needed.",
                     },
                 ),
                 "free_comfy_vram": (
@@ -435,47 +416,26 @@ class MultimodalQwen38Loader:
         self,
         model_file: str,
         mmproj_file: str,
-        thinking_mode: str,
-        context_length: int,
         batch_size: int,
         micro_batch_size: int,
         gpu_layers: int,
         free_comfy_vram: bool,
         unique_id: str | None = None,
     ):
-        progress = make_progress(100, unique_id)
-        send_status("Preparing local model…", unique_id)
-        update_progress(progress, 2)
+        send_status("Preparing local model backend…", unique_id)
         model_path = _resolve_file(model_file, "model")
         mmproj_path = _resolve_file(mmproj_file, "mmproj")
-        update_progress(progress, 5)
         backend = LocalQwen38Backend(
             LocalRuntimeSettings(
                 model_path=model_path,
                 mmproj_path=mmproj_path,
-                n_ctx=int(context_length),
                 n_batch=int(batch_size),
                 n_ubatch=int(micro_batch_size),
                 n_gpu_layers=int(gpu_layers),
-                thinking=thinking_mode == "thinking",
                 free_comfy_vram=bool(free_comfy_vram),
             )
         )
-        phase_text = {
-            "free_vram": "Freeing ComfyUI VRAM…",
-            "projector": "Loading vision projector…",
-            "weights": f"Loading {model_path.name} weights…",
-            "ready": "Local model ready",
-        }
-
-        def report_load(phase: str, fraction: float):
-            percent = 5 + round(max(0.0, min(1.0, fraction)) * 94)
-            update_progress(progress, percent)
-            send_status(f"{phase_text.get(phase, phase)} [{percent}%]", unique_id)
-
-        backend.ensure_loaded(progress_callback=report_load)
-        update_progress(progress, 100)
-        send_status(f"Local model ready ({backend.load_seconds:.1f}s)", unique_id)
+        send_status(f"Local backend ready: {model_path.name}", unique_id)
         return backend, backend.info()
 
 
@@ -575,26 +535,6 @@ class _MultimodalAPINodeBase:
                         "tooltip": "Optional image input. Connect one image or an IMAGE batch; each batch item is sent in the same API request.",
                     },
                 ),
-                "max_image_edge": (
-                    "INT",
-                    {
-                        "default": 2048,
-                        "min": 256,
-                        "max": 4096,
-                        "step": 64,
-                        "tooltip": "Resize each image before upload so its longest edge does not exceed this value.",
-                    },
-                ),
-                "max_image_frames": (
-                    "INT",
-                    {
-                        "default": 8,
-                        "min": 1,
-                        "max": 64,
-                        "step": 1,
-                        "tooltip": "Maximum number of images taken from an IMAGE batch for this request.",
-                    },
-                ),
             },
             "hidden": {"unique_id": "UNIQUE_ID"},
         }
@@ -623,8 +563,6 @@ class _MultimodalAPINodeBase:
         api_key: str = "",
         system_prompt: str = "",
         image: torch.Tensor | None = None,
-        max_image_edge: int = 2048,
-        max_image_frames: int = 8,
         unique_id: str | None = None,
     ):
         backend = OpenAICompatibleBackend(
@@ -661,8 +599,6 @@ class _MultimodalAPINodeBase:
                 0.0,
                 1.0,
                 int(seed),
-                int(max_image_edge),
-                int(max_image_frames),
                 1,
                 "frames",
                 "backend_default",
@@ -715,6 +651,16 @@ class MultimodalChat:
                     {"default": "You are a professional visual-understanding assistant running in ComfyUI. Answer accurately and directly.", "multiline": True, "tooltip": "System-level behavior and response-format instruction."},
                 ),
                 "thinking_mode": (["backend_default", "thinking", "instruct"], {"default": "backend_default", "tooltip": "Use backend setting, force reasoning mode, or force direct instruct mode."}),
+                "context_length": (
+                    "INT",
+                    {
+                        "default": 8192,
+                        "min": 2048,
+                        "max": 262144,
+                        "step": 1024,
+                        "tooltip": "Local llama.cpp context window for prompt, media tokens, and response. Changing it reloads the local model.",
+                    },
+                ),
                 "max_tokens": ("INT", {"default": 1024, "min": 16, "max": 32768, "step": 16, "tooltip": "Maximum number of new text tokens to generate."}),
                 "temperature": ("FLOAT", {"default": 0.6, "min": 0.0, "max": 2.0, "step": 0.05, "tooltip": "Sampling randomness. Lower values are steadier; higher values are more varied."}),
                 "top_p": ("FLOAT", {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Nucleus sampling threshold. 0.95 is a strong general default."}),
@@ -731,8 +677,6 @@ class MultimodalChat:
                         "tooltip": "Random seed used for reproducible sampling when all other inputs match.",
                     },
                 ),
-                "max_image_edge": ("INT", {"default": 1024, "min": 256, "max": 4096, "step": 64, "tooltip": "Resize each image/frame so its longest edge is at most this many pixels."}),
-                "max_image_frames": ("INT", {"default": 8, "min": 1, "max": 64, "tooltip": "Maximum number of IMAGE-batch items to send as still images."}),
                 "max_video_frames": ("INT", {"default": 8, "min": 1, "max": 64, "tooltip": "Maximum number of evenly sampled video frames sent to the model."}),
                 "video_transport": (["auto", "frames", "video_url"], {"default": "auto", "tooltip": "API video mode: native data URL when supported, or sampled frames. Local models always use frames."}),
                 "unload_after": ("BOOLEAN", {"default": False, "tooltip": "Release this backend after generation. Enable to recover VRAM, disable for faster repeated chats."}),
@@ -765,6 +709,7 @@ class MultimodalChat:
         prompt: str,
         system_prompt: str,
         thinking_mode: str,
+        context_length: int,
         max_tokens: int,
         temperature: float,
         top_p: float,
@@ -772,8 +717,6 @@ class MultimodalChat:
         min_p: float,
         repeat_penalty: float,
         seed: int,
-        max_image_edge: int,
-        max_image_frames: int,
         max_video_frames: int,
         video_transport: str,
         unload_after: bool,
@@ -790,6 +733,27 @@ class MultimodalChat:
         ticker = StatusTicker(unique_id)
         update_progress(progress, 0, total)
         ticker.send(f"Preparing multimodal input… (max_tokens={total})", force=True)
+
+        configure_chat = getattr(backend, "configure_chat", None)
+        if callable(configure_chat):
+            configure_chat(context_length, thinking_mode)
+
+        ensure_loaded = getattr(backend, "ensure_loaded", None)
+        if callable(ensure_loaded):
+            phase_text = {
+                "free_vram": "Freeing ComfyUI VRAM…",
+                "projector": "Loading vision projector…",
+                "weights": "Loading model weights…",
+                "ready": "Local model ready",
+            }
+
+            def report_load(phase: str, fraction: float):
+                ticker.send(
+                    f"{phase_text.get(phase, phase)} [{round(max(0.0, min(1.0, fraction)) * 100)}%]",
+                    force=True,
+                )
+
+            ensure_loaded(progress_callback=report_load)
 
         def report_token(count: int):
             visible = min(max(1, int(count)), total - 1) if total > 1 else 1
@@ -809,8 +773,6 @@ class MultimodalChat:
                 min_p,
                 repeat_penalty,
                 seed,
-                max_image_edge,
-                max_image_frames,
                 max_video_frames,
                 video_transport,
                 thinking_mode,

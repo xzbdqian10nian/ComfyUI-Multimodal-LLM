@@ -11,14 +11,6 @@
         "name": "vision projector",
         "tooltip": "Multimodal projector GGUF required for image and video-frame understanding."
       },
-      "thinking_mode": {
-        "name": "thinking mode",
-        "tooltip": "Thinking enables internal reasoning; instruct is faster and more direct."
-      },
-      "context_length": {
-        "name": "context length",
-        "tooltip": "Maximum prompt plus response token window. Larger values reserve more KV-cache memory."
-      },
       "batch_size": {
         "name": "batch size",
         "tooltip": "Prompt-processing batch size. Higher can be faster but uses more VRAM."
@@ -29,7 +21,7 @@
       },
       "gpu_layers": {
         "name": "GPU layers",
-        "tooltip": "Layers offloaded to GPU. -1 means all layers and is recommended for the RTX 5090."
+        "tooltip": "Layers offloaded to the GPU. -1 offloads all layers; lower this value when partial GPU offload is needed."
       },
       "free_comfy_vram": {
         "name": "free ComfyUI VRAM",
@@ -43,7 +35,7 @@
       },
       "1": {
         "name": "backend info",
-        "tooltip": "Resolved model, context, GPU layers, mode, and load time."
+        "tooltip": "Resolved model, projector, GPU layers, and backend state."
       }
     }
   },
@@ -86,14 +78,6 @@
       "image": {
         "name": "optional image batch",
         "tooltip": "One image or an IMAGE batch; every batch item is sent in the same API request."
-      },
-      "max_image_edge": {
-        "name": "max image edge",
-        "tooltip": "Resize each image before upload so its longest edge does not exceed this value."
-      },
-      "max_image_frames": {
-        "name": "max images",
-        "tooltip": "Maximum number of images taken from the IMAGE batch for this request."
       }
     },
     "outputs": {
@@ -147,14 +131,6 @@
         "name": "optional image batch",
         "tooltip": "One image or an IMAGE batch; every batch item is sent in the same API request."
       },
-      "max_image_edge": {
-        "name": "max image edge",
-        "tooltip": "Resize each image before upload so its longest edge does not exceed this value."
-      },
-      "max_image_frames": {
-        "name": "max images",
-        "tooltip": "Maximum number of images taken from the IMAGE batch for this request."
-      },
       "api_key": {
         "name": "API key",
         "tooltip": "API key used for this request; environment variables are not read."
@@ -195,6 +171,10 @@
         "name": "thinking mode",
         "tooltip": "Use backend setting, force reasoning mode, or force direct instruct mode."
       },
+      "context_length": {
+        "name": "context length",
+        "tooltip": "Local llama.cpp context window for prompt, media tokens, and response. Changing it reloads the local model."
+      },
       "max_tokens": {
         "name": "max tokens",
         "tooltip": "Maximum number of new text tokens to generate."
@@ -222,14 +202,6 @@
       "seed": {
         "name": "seed",
         "tooltip": "Random seed used for reproducible sampling when all other inputs match. ComfyUI can keep, increment, decrement, or randomize it after generation."
-      },
-      "max_image_edge": {
-        "name": "max image edge",
-        "tooltip": "Resize each image/frame so its longest edge is at most this many pixels."
-      },
-      "max_image_frames": {
-        "name": "max image frames",
-        "tooltip": "Maximum number of IMAGE-batch items to send as still images."
       },
       "max_video_frames": {
         "name": "max video frames",

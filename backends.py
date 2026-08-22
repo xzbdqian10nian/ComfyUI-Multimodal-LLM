@@ -14,6 +14,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import weakref
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -43,12 +44,14 @@ class BackendError(RuntimeError):
 class LocalRuntimeSettings:
     model_path: Path
     mmproj_path: Path
-    n_ctx: int
     n_batch: int
     n_ubatch: int
     n_gpu_layers: int
-    thinking: bool
     free_comfy_vram: bool
+
+
+_ACTIVE_LOCAL_BACKEND_LOCK = threading.RLock()
+_ACTIVE_LOCAL_BACKEND: weakref.ReferenceType | None = None
 
 
 class LocalQwen38Backend:
@@ -58,10 +61,43 @@ class LocalQwen38Backend:
 
     def __init__(self, settings: LocalRuntimeSettings):
         self.settings = settings
+        self.n_ctx = 8192
+        self.thinking = False
         self.llm = None
         self.chat_handler = None
         self._lock = threading.RLock()
         self.load_seconds = 0.0
+
+    def configure_chat(self, context_length: int, thinking_mode: str) -> None:
+        """Apply chat-owned settings before lazy model loading.
+
+        llama.cpp allocates its KV cache and Qwen vision handler while loading,
+        so changing either value after a model is resident requires a reload.
+        """
+        n_ctx = max(2048, int(context_length))
+        thinking = thinking_mode == "thinking"
+        with self._lock:
+            if self.llm is not None and (self.n_ctx != n_ctx or self.thinking != thinking):
+                print(
+                    "[ComfyUI-Multimodal-LLM] Chat context/mode changed; "
+                    "reloading the local model"
+                )
+                self.unload()
+            self.n_ctx = n_ctx
+            self.thinking = thinking
+
+    def _claim_active_slot(self) -> None:
+        """Unload another local VLM before this one allocates GPU memory."""
+        global _ACTIVE_LOCAL_BACKEND
+        with _ACTIVE_LOCAL_BACKEND_LOCK:
+            previous = _ACTIVE_LOCAL_BACKEND() if _ACTIVE_LOCAL_BACKEND is not None else None
+            if previous is not None and previous is not self:
+                print(
+                    "[ComfyUI-Multimodal-LLM] Model selection changed; "
+                    "unloading the previous local model first"
+                )
+                previous.unload()
+            _ACTIVE_LOCAL_BACKEND = weakref.ref(self)
 
     def _make_handler(self):
         try:
@@ -73,7 +109,7 @@ class LocalQwen38Backend:
 
         return Qwen35ChatHandler(
             mmproj_path=str(self.settings.mmproj_path),
-            enable_thinking=self.settings.thinking,
+            enable_thinking=self.thinking,
             preserve_thinking=False,
             add_vision_id=True,
             image_min_tokens=256,
@@ -89,6 +125,7 @@ class LocalQwen38Backend:
                 if callable(progress_callback):
                     progress_callback("ready", 1.0)
                 return
+            self._claim_active_slot()
             if self.settings.free_comfy_vram:
                 if callable(progress_callback):
                     progress_callback("free_vram", 0.05)
@@ -107,7 +144,7 @@ class LocalQwen38Backend:
             self.chat_handler = self._make_handler()
             print(
                 "[ComfyUI-Multimodal-LLM] Loading "
-                f"{self.settings.model_path.name}, ctx={self.settings.n_ctx}, "
+                f"{self.settings.model_path.name}, ctx={self.n_ctx}, "
                 f"gpu_layers={self.settings.n_gpu_layers}"
             )
             if callable(progress_callback):
@@ -133,19 +170,45 @@ class LocalQwen38Backend:
             heartbeat = threading.Thread(target=_load_heartbeat, name="multimodel-load-progress", daemon=True)
             heartbeat.start()
             try:
-                self.llm = Llama(
-                    model_path=str(self.settings.model_path),
-                    n_ctx=int(self.settings.n_ctx),
-                    n_batch=int(self.settings.n_batch),
-                    n_ubatch=int(self.settings.n_ubatch),
-                    n_gpu_layers=int(self.settings.n_gpu_layers),
-                    chat_handler=self.chat_handler,
-                    use_mmap=True,
-                    use_mlock=False,
-                    offload_kqv=True,
-                    no_perf=False,
-                    verbose=False,
-                )
+                try:
+                    self.llm = Llama(
+                        model_path=str(self.settings.model_path),
+                        n_ctx=int(self.n_ctx),
+                        n_batch=int(self.settings.n_batch),
+                        n_ubatch=int(self.settings.n_ubatch),
+                        n_gpu_layers=int(self.settings.n_gpu_layers),
+                        chat_handler=self.chat_handler,
+                        use_mmap=True,
+                        use_mlock=False,
+                        offload_kqv=True,
+                        no_perf=False,
+                        verbose=False,
+                    )
+                except Exception as exc:
+                    if self.chat_handler is not None:
+                        try:
+                            self.chat_handler.close()
+                        except Exception:
+                            pass
+                    self.chat_handler = None
+                    gc.collect()
+                    memory_hint = ""
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                        try:
+                            free_bytes, total_bytes = torch.cuda.mem_get_info()
+                            memory_hint = (
+                                f" Current CUDA memory: {free_bytes / 2**30:.1f} GiB free / "
+                                f"{total_bytes / 2**30:.1f} GiB total."
+                            )
+                        except Exception:
+                            pass
+                    raise BackendError(
+                        f"Unable to load GGUF model '{self.settings.model_path.name}'."
+                        f"{memory_hint} Check that the download is complete, the GGUF is "
+                        "supported by the installed llama-cpp-python build, and the selected "
+                        "GPU offload/context settings fit in memory."
+                    ) from exc
             finally:
                 load_heartbeat_done.set()
                 heartbeat.join(timeout=1.0)
@@ -165,12 +228,13 @@ class LocalQwen38Backend:
     def info(self) -> str:
         return (
             f"backend=local_llama_cpp\nmodel={self.settings.model_path.name}\n"
-            f"mmproj={self.settings.mmproj_path.name}\nctx={self.settings.n_ctx}\n"
+            f"mmproj={self.settings.mmproj_path.name}\nctx={self.n_ctx}\n"
             f"gpu_layers={self.settings.n_gpu_layers}\n"
-            f"thinking={self.settings.thinking}\nload_seconds={self.load_seconds:.1f}"
+            f"thinking={self.thinking}\nload_seconds={self.load_seconds:.1f}"
         )
 
     def unload(self) -> None:
+        global _ACTIVE_LOCAL_BACKEND
         with self._lock:
             if self.llm is not None:
                 try:
@@ -187,6 +251,10 @@ class LocalQwen38Backend:
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+            with _ACTIVE_LOCAL_BACKEND_LOCK:
+                active = _ACTIVE_LOCAL_BACKEND() if _ACTIVE_LOCAL_BACKEND is not None else None
+                if active is self:
+                    _ACTIVE_LOCAL_BACKEND = None
             print("[ComfyUI-Multimodal-LLM] Local model unloaded")
 
     def __del__(self):
