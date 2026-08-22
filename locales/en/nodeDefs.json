@@ -75,6 +75,10 @@
         "name": "temperature",
         "tooltip": "Sampling temperature. 0 omits this parameter and uses the provider default."
       },
+      "seed": {
+        "name": "seed",
+        "tooltip": "Random seed. Providers that support seed can use it for repeatable sampling."
+      },
       "system_prompt": {
         "name": "system prompt",
         "tooltip": "Optional system instruction; leave blank for provider defaults."
@@ -130,6 +134,10 @@
       "temperature": {
         "name": "temperature",
         "tooltip": "Sampling temperature. 0 omits this parameter and uses the provider default."
+      },
+      "seed": {
+        "name": "seed",
+        "tooltip": "Random seed. Providers that support seed can use it for repeatable sampling."
       },
       "system_prompt": {
         "name": "system prompt",
@@ -213,7 +221,7 @@
       },
       "seed": {
         "name": "seed",
-        "tooltip": "Random seed used for reproducible local sampling when all other inputs match."
+        "tooltip": "Random seed used for reproducible sampling when all other inputs match. ComfyUI can keep, increment, decrement, or randomize it after generation."
       },
       "max_image_edge": {
         "name": "max image edge",

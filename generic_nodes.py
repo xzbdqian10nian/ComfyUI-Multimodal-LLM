@@ -545,6 +545,16 @@ class _MultimodalAPINodeBase:
                         "tooltip": "Sampling temperature. 0 means do not send this parameter; use the provider default.",
                     },
                 ),
+                "seed": (
+                    "INT",
+                    {
+                        "default": 1,
+                        "min": 0,
+                        "max": 2**32 - 1,
+                        "control_after_generate": True,
+                        "tooltip": "Random seed. Providers that support seed can use it for repeatable sampling.",
+                    },
+                ),
             }
         )
         return {
@@ -607,6 +617,7 @@ class _MultimodalAPINodeBase:
         prompt: str,
         max_tokens: int,
         temperature: float,
+        seed: int = 1,
         api_key_env: str = "",
         api_key: str = "",
         system_prompt: str = "",
@@ -648,7 +659,7 @@ class _MultimodalAPINodeBase:
                 0,
                 0.0,
                 1.0,
-                0,
+                int(seed),
                 int(max_image_edge),
                 int(max_image_frames),
                 1,
@@ -709,7 +720,16 @@ class MultimodalChat:
                 "top_k": ("INT", {"default": 40, "min": 0, "max": 200, "tooltip": "Restrict each token choice to the top K candidates. 0 disables it when supported."}),
                 "min_p": ("FLOAT", {"default": 0.05, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Discard tokens whose probability is too small relative to the best token."}),
                 "repeat_penalty": ("FLOAT", {"default": 1.05, "min": 0.5, "max": 2.0, "step": 0.01, "tooltip": "Penalizes repeated text. 1.0 disables the penalty."}),
-                "seed": ("INT", {"default": 1, "min": 0, "max": 2**32 - 1, "tooltip": "Random seed used for reproducible local sampling when all other inputs match."}),
+                "seed": (
+                    "INT",
+                    {
+                        "default": 1,
+                        "min": 0,
+                        "max": 2**32 - 1,
+                        "control_after_generate": True,
+                        "tooltip": "Random seed used for reproducible sampling when all other inputs match.",
+                    },
+                ),
                 "max_image_edge": ("INT", {"default": 1024, "min": 256, "max": 4096, "step": 64, "tooltip": "Resize each image/frame so its longest edge is at most this many pixels."}),
                 "max_image_frames": ("INT", {"default": 8, "min": 1, "max": 64, "tooltip": "Maximum number of IMAGE-batch items to send as still images."}),
                 "max_video_frames": ("INT", {"default": 8, "min": 1, "max": 64, "tooltip": "Maximum number of evenly sampled video frames sent to the model."}),

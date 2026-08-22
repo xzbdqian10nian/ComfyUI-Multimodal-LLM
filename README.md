@@ -74,6 +74,8 @@ export OPENAI_API_KEY='your-api-key'
 
 - `max_tokens=0`：不发送 `max_tokens`，使用服务商默认值；
 - `temperature=0`：不发送 `temperature`，使用服务商默认值；
+- `seed`：发送随机种子；支持 ComfyUI 的生成后固定、递增、递减和随机选项，
+  API 服务商支持 `seed` 时可用于尽量复现采样；
 - API 节点输出 `response`、`usage`、`stats`，可直接连接其他字符串节点。
 
 ## 图片和视频
