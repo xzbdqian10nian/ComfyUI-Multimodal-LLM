@@ -3,5 +3,29 @@
   "default_model": "Qwen3.8-27B-UD-Q4_K_M.gguf",
   "default_mmproj": "mmproj-BF16.gguf",
   "source": "unsloth/Qwen3.8-27B-GGUF",
+  "sources": [
+    {
+      "name": "Unsloth UD-Q4_K_M",
+      "repo": "unsloth/Qwen3.8-27B-GGUF",
+      "model": "Qwen3.8-27B-UD-Q4_K_M.gguf",
+      "mmproj": "mmproj-BF16.gguf",
+      "profile": "Default recommendation; Dynamic 3.0 quantization with the original Qwen alignment."
+    },
+    {
+      "name": "Huihui Abliterated",
+      "repo": "huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF",
+      "model": "Huihui-Qwen3.8-27B-abliterated-Q4_K.gguf",
+      "alternative_model": "Huihui-Qwen3.8-27B-abliterated-Q4_K_L.gguf",
+      "mmproj": "mmproj-model-bf16.gguf",
+      "profile": "Reduced-refusal community variant; Q4_K_L retains selected tensors at higher precision."
+    },
+    {
+      "name": "orcarouter Uncensored",
+      "repo": "orcarouter/Qwen3.8-27B-Uncensored-GGUF",
+      "model": "Qwen3.8-27B-Uncensored-Q4_K_M.gguf",
+      "mmproj": "mmproj-Qwen3.8-27B-Uncensored-f16.gguf",
+      "profile": "Reduced-refusal community variant; Hugging Face access approval may be required."
+    }
+  ],
   "notes": "The model directory is resolved from ComfyUI's own models directory. Q4_K_M is the first compatibility baseline for RTX 5090 32GB."
 }
