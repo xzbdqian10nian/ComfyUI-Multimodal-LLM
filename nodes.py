@@ -20,7 +20,7 @@ except Exception:  # pragma: no cover - only used by standalone tests
 
 PLUGIN_DIR = Path(__file__).resolve().parent
 CATALOG_PATH = PLUGIN_DIR / "models.json"
-DEFAULT_POD_MODEL_ROOT = Path("/poddata/ComfyUI/models/LLM/Qwen3.8")
+DEFAULT_MODEL_SUBDIR = Path("LLM/Qwen3.8")
 DEFAULT_MODEL = "Qwen3.8-27B-UD-Q4_K_M.gguf"
 DEFAULT_MMPROJ = "mmproj-BF16.gguf"
 
@@ -36,14 +36,15 @@ CATALOG = _load_catalog()
 
 
 def _model_root() -> Path:
-    configured = os.environ.get("QWEN38_MODEL_DIR") or CATALOG.get("model_root")
+    configured = os.environ.get("QWEN38_MODEL_DIR")
     if configured:
         return Path(configured).expanduser()
-    if DEFAULT_POD_MODEL_ROOT.exists() or Path("/poddata").exists():
-        return DEFAULT_POD_MODEL_ROOT
     if folder_paths is not None:
-        return Path(folder_paths.models_dir) / "LLM" / "Qwen3.8"
-    return DEFAULT_POD_MODEL_ROOT
+        return Path(folder_paths.models_dir) / CATALOG.get("model_subdir", DEFAULT_MODEL_SUBDIR)
+    # Standalone fallback: custom_nodes/<plugin> is two levels below the
+    # ComfyUI root, so keep the same portable models/ layout without knowing
+    # anything about a platform-specific storage mount.
+    return PLUGIN_DIR.parents[1] / "models" / CATALOG.get("model_subdir", DEFAULT_MODEL_SUBDIR)
 
 
 def _is_complete_file(path: Path) -> bool:

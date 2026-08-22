@@ -19,10 +19,10 @@ CUDA 或显卡驱动。优先复用镜像中已有的 CUDA llama.cpp 和 API 依
 
 ## 本地模型
 
-默认模型目录：
+默认模型目录使用 ComfyUI 自己的模型根目录，不写死平台的实际存储挂载路径：
 
 ```text
-/poddata/ComfyUI/models/LLM/Qwen3.8/
+ComfyUI/models/LLM/Qwen3.8/
 ```
 
 默认文件名：
@@ -32,9 +32,10 @@ Qwen3.8-27B-UD-Q4_K_M.gguf
 mmproj-BF16.gguf
 ```
 
-也可以通过 `QWEN38_MODEL_DIR` 指定其他目录。模型下载完成后再启动或刷新
-ComfyUI，加载器会自动扫描目录中的 `.gguf` 文件；带有 `.aria2` 的未完成
-下载不会显示为可选模型。
+插件通过 ComfyUI 的 `folder_paths.models_dir` 定位上述目录，因此换镜像、换
+显卡或换平台后仍使用当前 ComfyUI 的模型目录。确实需要外置目录时，才通过
+`QWEN38_MODEL_DIR` 临时指定。模型下载完成后再启动或刷新 ComfyUI，加载器会
+自动扫描目录中的 `.gguf` 文件；带有 `.aria2` 的未完成下载不会显示为可选模型。
 
 推荐连接：
 

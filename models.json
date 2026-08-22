@@ -1,7 +1,7 @@
 {
-  "model_root": "/poddata/ComfyUI/models/LLM/Qwen3.8",
+  "model_subdir": "LLM/Qwen3.8",
   "default_model": "Qwen3.8-27B-UD-Q4_K_M.gguf",
   "default_mmproj": "mmproj-BF16.gguf",
   "source": "unsloth/Qwen3.8-27B-GGUF",
-  "notes": "Q4_K_M is the first compatibility baseline for RTX 5090 32GB. Higher precision and additional local/API backends can be added without changing the generic chat socket."
+  "notes": "The model directory is resolved from ComfyUI's own models directory. Q4_K_M is the first compatibility baseline for RTX 5090 32GB."
 }
