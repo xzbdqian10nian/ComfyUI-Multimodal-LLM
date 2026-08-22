@@ -1,0 +1,507 @@
+{
+  "id": "24edb81d-2dc6-4395-b6fa-9dbddce7abd5",
+  "revision": 0,
+  "last_node_id": 99,
+  "last_link_id": 3,
+  "nodes": [
+    {
+      "id": 99,
+      "type": "MarkdownNote",
+      "pos": [
+        40,
+        -90
+      ],
+      "size": [
+        1430,
+        180
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "04 · ComfyUI 视频帧 / Video frames",
+      "properties": {
+        "Node name for S&R": "MarkdownNote",
+        "cnr_id": "comfy-core"
+      },
+      "widgets_values": [
+        "## 视频帧理解\nLoad Video 先输出 ComfyUI VIDEO，Get Video Components 解码为 IMAGE 批次，再连接 Chat 的 video_frames。适合你已经拥有帧批次的工作流。"
+      ],
+      "color": "#243447",
+      "bgcolor": "#31465c"
+    },
+    {
+      "id": 1,
+      "type": "MultimodalQwen38Loader",
+      "pos": [
+        40,
+        180
+      ],
+      "size": [
+        430,
+        330
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_file",
+          "type": "COMBO",
+          "widget": {
+            "name": "model_file"
+          },
+          "link": null
+        },
+        {
+          "name": "mmproj_file",
+          "type": "COMBO",
+          "widget": {
+            "name": "mmproj_file"
+          },
+          "link": null
+        },
+        {
+          "name": "thinking_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "thinking_mode"
+          },
+          "link": null
+        },
+        {
+          "name": "context_length",
+          "type": "INT",
+          "widget": {
+            "name": "context_length"
+          },
+          "link": null
+        },
+        {
+          "name": "batch_size",
+          "type": "INT",
+          "widget": {
+            "name": "batch_size"
+          },
+          "link": null
+        },
+        {
+          "name": "micro_batch_size",
+          "type": "INT",
+          "widget": {
+            "name": "micro_batch_size"
+          },
+          "link": null
+        },
+        {
+          "name": "gpu_layers",
+          "type": "INT",
+          "widget": {
+            "name": "gpu_layers"
+          },
+          "link": null
+        },
+        {
+          "name": "free_comfy_vram",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "free_comfy_vram"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "backend",
+          "type": "MLLM_BACKEND",
+          "links": [
+            1
+          ]
+        },
+        {
+          "name": "backend_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Multimodel · Qwen3.8 Local Loader",
+      "properties": {
+        "Node name for S&R": "MultimodalQwen38Loader",
+        "cnr_id": "ComfyUI-Multimodal-LLM"
+      },
+      "widgets_values": [
+        "Qwen3.8-27B-UD-Q4_K_M.gguf",
+        "mmproj-BF16.gguf",
+        "instruct",
+        8192,
+        1024,
+        512,
+        -1,
+        true
+      ]
+    },
+    {
+      "id": 3,
+      "type": "LoadVideo",
+      "pos": [
+        510,
+        180
+      ],
+      "size": [
+        390,
+        360
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "file",
+          "type": "COMBO",
+          "widget": {
+            "name": "file"
+          },
+          "link": null
+        },
+        {
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": {
+            "name": "upload"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo",
+        "cnr_id": "comfy-core"
+      },
+      "widgets_values": [
+        "即梦2视频放大测试素材.mp4",
+        "image"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "GetVideoComponents",
+      "pos": [
+        920,
+        260
+      ],
+      "size": [
+        300,
+        170
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": [
+            3
+          ]
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": null
+        },
+        {
+          "name": "fps",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "name": "bit_depth",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "color_space",
+          "type": "COMBO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "GetVideoComponents",
+        "cnr_id": "comfy-core"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 2,
+      "type": "MultimodalChat",
+      "pos": [
+        1280,
+        120
+      ],
+      "size": [
+        520,
+        590
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "backend",
+          "type": "MLLM_BACKEND",
+          "link": 1
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": null
+        },
+        {
+          "name": "system_prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "system_prompt"
+          },
+          "link": null
+        },
+        {
+          "name": "thinking_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "thinking_mode"
+          },
+          "link": null
+        },
+        {
+          "name": "max_tokens",
+          "type": "INT",
+          "widget": {
+            "name": "max_tokens"
+          },
+          "link": null
+        },
+        {
+          "name": "temperature",
+          "type": "FLOAT",
+          "widget": {
+            "name": "temperature"
+          },
+          "link": null
+        },
+        {
+          "name": "top_p",
+          "type": "FLOAT",
+          "widget": {
+            "name": "top_p"
+          },
+          "link": null
+        },
+        {
+          "name": "top_k",
+          "type": "INT",
+          "widget": {
+            "name": "top_k"
+          },
+          "link": null
+        },
+        {
+          "name": "min_p",
+          "type": "FLOAT",
+          "widget": {
+            "name": "min_p"
+          },
+          "link": null
+        },
+        {
+          "name": "repeat_penalty",
+          "type": "FLOAT",
+          "widget": {
+            "name": "repeat_penalty"
+          },
+          "link": null
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": null
+        },
+        {
+          "name": "max_image_edge",
+          "type": "INT",
+          "widget": {
+            "name": "max_image_edge"
+          },
+          "link": null
+        },
+        {
+          "name": "max_image_frames",
+          "type": "INT",
+          "widget": {
+            "name": "max_image_frames"
+          },
+          "link": null
+        },
+        {
+          "name": "max_video_frames",
+          "type": "INT",
+          "widget": {
+            "name": "max_video_frames"
+          },
+          "link": null
+        },
+        {
+          "name": "video_transport",
+          "type": "COMBO",
+          "widget": {
+            "name": "video_transport"
+          },
+          "link": null
+        },
+        {
+          "name": "unload_after",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "unload_after"
+          },
+          "link": null
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "shape": 7,
+          "link": null
+        },
+        {
+          "name": "video_frames",
+          "type": "IMAGE",
+          "shape": 7,
+          "link": 3
+        },
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "shape": 7,
+          "link": null
+        },
+        {
+          "name": "tools_json",
+          "type": "STRING",
+          "widget": {
+            "name": "tools_json"
+          },
+          "shape": 7,
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "reasoning",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "raw_response",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "stats",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Multimodel · Chat",
+      "properties": {
+        "Node name for S&R": "MultimodalChat",
+        "cnr_id": "ComfyUI-Multimodal-LLM"
+      },
+      "widgets_values": [
+        "请根据这些视频帧概括人物、动作变化、场景和镜头内容。",
+        "你是运行在 ComfyUI 中的专业多模态助手。请准确、直接地回答。",
+        "backend_default",
+        512,
+        0.7,
+        0.8,
+        20,
+        0.0,
+        1.0,
+        1,
+        "fixed",
+        1024,
+        4,
+        8,
+        "frames",
+        false,
+        ""
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "MLLM_BACKEND"
+    ],
+    [
+      2,
+      3,
+      0,
+      4,
+      0,
+      "VIDEO"
+    ],
+    [
+      3,
+      4,
+      0,
+      2,
+      17,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "definitions": {
+    "subgraphs": []
+  },
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.9,
+      "offset": [
+        40,
+        40
+      ]
+    }
+  },
+  "version": 0.4
+}

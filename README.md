@@ -113,6 +113,27 @@ export OPENAI_API_KEY='your-api-key'
 
 图片批次是在同一次请求中发送多张图片，不会自动拆成多个独立请求。
 
+## 示例工作流
+
+`example_workflows/` 提供 5 个可直接拖入 ComfyUI 的 Qwen3.8 本地示例：
+
+| 文件 | 用法 |
+| --- | --- |
+| `01_text_chat.json` | 普通纯文本对话 |
+| `02_single_image.json` | 单张图片理解 |
+| `03_multiple_images.json` | 两张或多张图片作为一个 IMAGE 批次输入 |
+| `04_video_frames.json` | ComfyUI VIDEO 解码成 IMAGE 视频帧批次后输入 |
+| `05_comfyui_video.json` | ComfyUI 原生 VIDEO 直接输入，由插件自动抽帧 |
+
+拖入工作流后，在加载器中选择已经下载的“主模型 + 对应 projector”，再把示例
+图片或视频替换为自己的素材即可。默认示例使用
+`Qwen3.8-27B-UD-Q4_K_M.gguf + mmproj-BF16.gguf`；示例里的素材文件名只用于
+展示连接方式，不随插件仓库分发。
+
+本地 Qwen3.8 已实际验证上述 5 种输入均能完成推理。视频帧工作流适合上游已经
+输出 IMAGE 批次的情况；原生 VIDEO 工作流则更简洁，并由插件按照
+`max_video_frames` 均匀抽帧。
+
 ## 进度、日志和语言
 
 - 模型加载会显示准备显存、加载 projector、加载权重和完成等阶段；

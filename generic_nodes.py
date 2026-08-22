@@ -349,6 +349,7 @@ class MultimodalQwen38Loader:
     )
     CATEGORY = "Multimodel LLM/Backends"
     DESCRIPTION = "Loads a local Qwen3.8 GGUF model and its vision projector with CUDA llama.cpp."
+    FUNCTION = "load_model"
 
     @classmethod
     def INPUT_TYPES(cls):
