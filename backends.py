@@ -101,13 +101,13 @@ class LocalQwen38Backend:
 
     def _make_handler(self):
         try:
-            from llama_cpp.llama_chat_format import Qwen35ChatHandler
+            from llama_cpp.llama_chat_format import Jinja2ChatFormatter, Qwen35ChatHandler
         except Exception as exc:
             raise BackendError(
                 "当前 llama-cpp-python 不包含 Qwen35ChatHandler，无法加载视觉模型。"
             ) from exc
 
-        return Qwen35ChatHandler(
+        handler = Qwen35ChatHandler(
             mmproj_path=str(self.settings.mmproj_path),
             enable_thinking=self.thinking,
             preserve_thinking=False,
@@ -118,6 +118,17 @@ class LocalQwen38Backend:
             use_gpu=self.settings.n_gpu_layers != 0,
             verbose=False,
         )
+        # llama-cpp-python's current MTMD multimodal formatter builds its own
+        # sandboxed Jinja environment but, unlike Jinja2ChatFormatter, some
+        # releases omit the standard Hugging Face template helpers. Qwen3.8's
+        # thinking template calls raise_exception, so register the two helpers
+        # when that environment is exposed. This is harmless on releases that
+        # already provide them and keeps the plugin portable across wheels.
+        environment = getattr(getattr(handler, "chat_template", None), "environment", None)
+        if environment is not None:
+            environment.globals.setdefault("raise_exception", Jinja2ChatFormatter.raise_exception)
+            environment.globals.setdefault("strftime_now", Jinja2ChatFormatter.strftime_now)
+        return handler
 
     def ensure_loaded(self, progress_callback=None) -> None:
         with self._lock:
