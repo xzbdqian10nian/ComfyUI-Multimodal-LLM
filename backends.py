@@ -150,14 +150,14 @@ class LocalQwen38Backend:
                 ) from exc
 
             started = time.perf_counter()
-            if callable(progress_callback):
-                progress_callback("projector", 0.18)
-            self.chat_handler = self._make_handler()
             print(
                 "[ComfyUI-Multimodal-LLM] Loading "
                 f"{self.settings.model_path.name}, ctx={self.n_ctx}, "
                 f"gpu_layers={self.settings.n_gpu_layers}"
             )
+            if callable(progress_callback):
+                progress_callback("projector", 0.18)
+            self.chat_handler = self._make_handler()
             if callable(progress_callback):
                 # llama-cpp-python performs this call synchronously and does
                 # not expose llama.cpp's weight-loading callback.  Keep the
@@ -172,11 +172,16 @@ class LocalQwen38Backend:
             def _load_heartbeat():
                 while not load_heartbeat_done.wait(5.0):
                     elapsed = time.perf_counter() - started
-                    print(
-                        "[ComfyUI-Multimodal-LLM] Loading weights still in progress "
-                        f"({elapsed:.0f}s elapsed; llama.cpp has no byte-level callback)",
-                        flush=True,
-                    )
+                    if callable(progress_callback):
+                        # Refresh the same stage bar/status rather than adding
+                        # a new log line every five seconds.
+                        progress_callback(f"weights_wait:{elapsed:.0f}", 0.25)
+                    else:
+                        print(
+                            "[ComfyUI-Multimodal-LLM] Loading weights still in progress "
+                            f"({elapsed:.0f}s elapsed; llama.cpp has no byte-level callback)",
+                            flush=True,
+                        )
 
             heartbeat = threading.Thread(target=_load_heartbeat, name="multimodel-load-progress", daemon=True)
             heartbeat.start()

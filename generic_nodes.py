@@ -24,7 +24,7 @@ from .media import (
     tensor_frame_to_pil,
 )
 from .nodes import _choices, _resolve_file
-from .progress import StatusTicker, make_progress, send_status, update_progress
+from .progress import ConsoleProgressBar, StatusTicker, make_progress, send_status, update_progress
 
 
 def _to_plain(value: Any) -> Any:
@@ -591,6 +591,7 @@ class _MultimodalAPINodeBase:
         # keeping 0 intact in the request so the API applies its own default.
         progress_total = requested_max_tokens if requested_max_tokens > 0 else 100
         progress = make_progress(progress_total, unique_id)
+        log_progress = ConsoleProgressBar("API generation", progress_total)
         ticker = StatusTicker(unique_id)
         update_progress(progress, 0, progress_total)
         ticker.send("Preparing API request…", force=True)
@@ -598,7 +599,11 @@ class _MultimodalAPINodeBase:
         def report_token(count: int):
             visible = min(max(1, int(count)), progress_total - 1) if progress_total > 1 else 1
             update_progress(progress, visible, progress_total)
-            ticker.send(f"API generating… {count} streamed chunks")
+            log_progress.update(visible, suffix=f"{count} streamed chunks")
+            ticker.send(
+                f"API generating… {count} streamed chunks",
+                mirror_log=False,
+            )
 
         started = time.perf_counter()
         try:
@@ -623,6 +628,7 @@ class _MultimodalAPINodeBase:
                 report_token,
             )
             update_progress(progress, progress_total, progress_total)
+            log_progress.finish("response complete")
             ticker.send("API request complete", force=True)
             usage = json.dumps(
                 {
@@ -639,6 +645,7 @@ class _MultimodalAPINodeBase:
                 "result": (response, usage, direct_stats),
             }
         finally:
+            log_progress.close()
             backend.unload()
 
 
@@ -744,6 +751,7 @@ class MultimodalChat:
             raise BackendError("请连接本插件的本地模型加载器或 API Backend 节点。")
         total = max(1, int(max_tokens))
         progress = make_progress(total, unique_id)
+        generation_log = ConsoleProgressBar("Local model generation", total)
         ticker = StatusTicker(unique_id)
         update_progress(progress, 0, total)
         ticker.send(f"Preparing multimodal input… (max_tokens={total})", force=True)
@@ -754,6 +762,7 @@ class MultimodalChat:
 
         ensure_loaded = getattr(backend, "ensure_loaded", None)
         if callable(ensure_loaded):
+            load_log = ConsoleProgressBar("Local model loading", 100, interval=0.0)
             phase_text = {
                 "free_vram": "Freeing ComfyUI VRAM…",
                 "projector": "Loading vision projector…",
@@ -762,18 +771,39 @@ class MultimodalChat:
             }
 
             def report_load(phase: str, fraction: float):
+                phase_name, separator, phase_detail = phase.partition(":")
+                phase_label = phase_text.get(phase_name, phase_name)
+                if separator and phase_name == "weights_wait":
+                    phase_label = f"Loading model weights… ({phase_detail}s elapsed)"
+                load_value = round(max(0.0, min(1.0, fraction)) * 100)
+                if phase_name == "ready":
+                    load_log.finish("ready")
+                else:
+                    load_log.update(
+                        load_value,
+                        suffix=phase_label,
+                        force=True,
+                    )
                 ticker.send(
-                    f"{phase_text.get(phase, phase)} [{round(max(0.0, min(1.0, fraction)) * 100)}%]",
+                    f"{phase_label} [{load_value}%]",
                     force=True,
+                    mirror_log=False,
                 )
 
-            ensure_loaded(progress_callback=report_load)
+            try:
+                ensure_loaded(progress_callback=report_load)
+            finally:
+                load_log.close()
 
         def report_token(count: int):
             visible = min(max(1, int(count)), total - 1) if total > 1 else 1
             update_progress(progress, visible, total)
             percent = round(100 * visible / total)
-            ticker.send(f"Generating… {count} streamed chunks (display progress ~{percent}%)")
+            generation_log.update(visible, suffix=f"{count} streamed chunks")
+            ticker.send(
+                f"Generating… {count} streamed chunks (token budget ~{percent}%)",
+                mirror_log=False,
+            )
 
         try:
             response, reasoning, raw, stats = _run_chat(
@@ -797,6 +827,7 @@ class MultimodalChat:
                 report_token,
             )
             update_progress(progress, total, total)
+            generation_log.finish(stats.splitlines()[0])
             ticker.send(f"Generation complete · {stats.splitlines()[0]}", force=True)
             print(f"[ComfyUI-Multimodal-LLM] Generation finished: {stats.splitlines()[0]}")
             return {
@@ -804,6 +835,7 @@ class MultimodalChat:
                 "result": (response, reasoning, raw, stats),
             }
         finally:
+            generation_log.close()
             if unload_after and callable(getattr(backend, "unload", None)):
                 backend.unload()
 

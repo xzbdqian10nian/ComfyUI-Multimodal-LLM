@@ -142,10 +142,11 @@ export OPENAI_API_KEY='your-api-key'
 
 ## 进度、日志和语言
 
-- 模型加载会显示准备显存、加载 projector、加载权重和完成等阶段；
-- 生成和 API 请求会显示 ComfyUI 进度，并把关键状态写入 `comfyUI.log`；
+- 模型加载会用日志进度条显示准备显存、projector、权重和完成等阶段；
+- 本地生成和 API 请求同时显示 ComfyUI 原生进度与日志进度条，不再为每次
+  流式更新新增一整行日志；
 - 加载权重时 llama.cpp 没有字节级回调，日志会用心跳提示仍在加载，避免被
-  误认为进程卡死；
+  误认为进程卡死；加载条是阶段进度，生成条按 token/chunk 上限推进；
 - 节点参数带有鼠标悬停说明；
 - 节点名称、参数名和说明随 ComfyUI 的 English / 简体中文设置切换；
 - 翻译文件位于 `locales/en/nodeDefs.json` 和 `locales/zh/nodeDefs.json`。
