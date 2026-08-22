@@ -1,0 +1,290 @@
+{
+  "MultimodalQwen38Loader": {
+    "display_name": "Multimodel · 本地 Qwen3.8 加载器",
+    "description": "通过 CUDA llama.cpp 加载本地 Qwen3.8 GGUF 主模型和视觉投影模型。",
+    "inputs": {
+      "model_file": {
+        "name": "主模型文件",
+        "tooltip": "Qwen3.8 主模型 GGUF 文件。当前 32GB 显存推荐使用 Q4_K_M。"
+      },
+      "mmproj_file": {
+        "name": "视觉投影模型",
+        "tooltip": "图片与视频帧理解必需的多模态 projector GGUF 文件。"
+      },
+      "thinking_mode": {
+        "name": "思考模式",
+        "tooltip": "thinking 会启用内部推理；instruct 更快、更直接。"
+      },
+      "context_length": {
+        "name": "上下文长度",
+        "tooltip": "提示词与输出合计可使用的最大 token 窗口。数值越大，KV Cache 占用越高。"
+      },
+      "batch_size": {
+        "name": "批处理大小",
+        "tooltip": "提示词预填充批次大小。调高可能更快，但会增加显存占用。"
+      },
+      "micro_batch_size": {
+        "name": "微批次大小",
+        "tooltip": "llama.cpp 实际计算的微批次大小。预填充阶段爆显存时优先调低此项。"
+      },
+      "gpu_layers": {
+        "name": "GPU 层数",
+        "tooltip": "卸载到 GPU 的模型层数。-1 表示全部放到 GPU，RTX 5090 推荐使用 -1。"
+      },
+      "free_comfy_vram": {
+        "name": "释放 ComfyUI 显存",
+        "tooltip": "加载大型视觉语言模型前，先卸载 ComfyUI 已加载的扩散模型。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "后端",
+        "tooltip": "已加载的本地多模态模型后端，连接到 Multimodel 对话节点。"
+      },
+      "1": {
+        "name": "后端信息",
+        "tooltip": "实际模型、上下文、GPU 层数、模式和加载耗时。"
+      }
+    }
+  },
+  "MultimodalAPIEnv": {
+    "display_name": "Multimodel · API（环境变量）",
+    "description": "使用系统环境变量中的 API 密钥发送一次简单的文本或多图请求。",
+    "inputs": {
+      "base_url": {
+        "name": "接口基础地址",
+        "tooltip": "OpenAI 兼容接口的 base URL，不要包含 /chat/completions。"
+      },
+      "model": {
+        "name": "模型名称",
+        "tooltip": "API 服务商实际提供的模型 ID。"
+      },
+      "api_key_env": {
+        "name": "密钥环境变量",
+        "tooltip": "保存 API 密钥的环境变量名称，例如 OPENAI_API_KEY。"
+      },
+      "prompt": {
+        "name": "提示词",
+        "tooltip": "发送给 API 的文字指令；可同时发送图片批次。"
+      },
+      "max_tokens": {
+        "name": "最大输出 Tokens",
+        "tooltip": "最大输出 token 数。设为 0 表示不发送此参数，使用服务商默认值。"
+      },
+      "temperature": {
+        "name": "随机度",
+        "tooltip": "采样温度。设为 0 表示不发送此参数，使用服务商默认值。"
+      },
+      "system_prompt": {
+        "name": "系统提示词",
+        "tooltip": "可选的系统级指令；留空使用服务商默认行为。"
+      },
+      "image": {
+        "name": "可选图像批次",
+        "tooltip": "可接单张图片或 IMAGE 批次；批次中的每张图会在同一个 API 请求中发送。"
+      },
+      "max_image_edge": {
+        "name": "图片最长边",
+        "tooltip": "上传前将每张图片最长边缩放到不超过此像素值。"
+      },
+      "max_image_frames": {
+        "name": "最多图片数",
+        "tooltip": "本次请求最多从 IMAGE 批次中发送多少张图片。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "回答",
+        "tooltip": "API 返回的最终文本回答。"
+      },
+      "1": {
+        "name": "用量",
+        "tooltip": "服务商返回的 token 用量 JSON（如果有）。"
+      },
+      "2": {
+        "name": "统计",
+        "tooltip": "请求耗时和后端信息。"
+      }
+    }
+  },
+  "MultimodalAPIDirect": {
+    "display_name": "Multimodel · API（直接 Key）",
+    "description": "使用节点中直接填写的 API 密钥发送一次简单的文本或多图请求。",
+    "inputs": {
+      "base_url": {
+        "name": "接口基础地址",
+        "tooltip": "OpenAI 兼容接口的 base URL，不要包含 /chat/completions。"
+      },
+      "model": {
+        "name": "模型名称",
+        "tooltip": "API 服务商实际提供的模型 ID。"
+      },
+      "prompt": {
+        "name": "提示词",
+        "tooltip": "发送给 API 的文字指令；可同时发送图片批次。"
+      },
+      "max_tokens": {
+        "name": "最大输出 Tokens",
+        "tooltip": "最大输出 token 数。设为 0 表示不发送此参数，使用服务商默认值。"
+      },
+      "temperature": {
+        "name": "随机度",
+        "tooltip": "采样温度。设为 0 表示不发送此参数，使用服务商默认值。"
+      },
+      "system_prompt": {
+        "name": "系统提示词",
+        "tooltip": "可选的系统级指令；留空使用服务商默认行为。"
+      },
+      "image": {
+        "name": "可选图像批次",
+        "tooltip": "可接单张图片或 IMAGE 批次；批次中的每张图会在同一个 API 请求中发送。"
+      },
+      "max_image_edge": {
+        "name": "图片最长边",
+        "tooltip": "上传前将每张图片最长边缩放到不超过此像素值。"
+      },
+      "max_image_frames": {
+        "name": "最多图片数",
+        "tooltip": "本次请求最多从 IMAGE 批次中发送多少张图片。"
+      },
+      "api_key": {
+        "name": "API 密钥",
+        "tooltip": "本次请求使用的 API 密钥，不读取环境变量。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "回答",
+        "tooltip": "API 返回的最终文本回答。"
+      },
+      "1": {
+        "name": "用量",
+        "tooltip": "服务商返回的 token 用量 JSON（如果有）。"
+      },
+      "2": {
+        "name": "统计",
+        "tooltip": "请求耗时和后端信息。"
+      }
+    }
+  },
+  "MultimodalChat": {
+    "display_name": "Multimodel · 多模态对话",
+    "description": "把文字、图片或视频发送给本地模型或 OpenAI 兼容 API 后端。",
+    "inputs": {
+      "backend": {
+        "name": "后端",
+        "tooltip": "连接 Multimodel 本地模型加载器或 API 后端。"
+      },
+      "prompt": {
+        "name": "提示词",
+        "tooltip": "与图片或视频内容一起发送给模型的用户指令。"
+      },
+      "system_prompt": {
+        "name": "系统提示词",
+        "tooltip": "控制模型角色、回答方式和输出格式的系统级指令。"
+      },
+      "thinking_mode": {
+        "name": "思考模式",
+        "tooltip": "使用后端默认设置，或强制开启 thinking / instruct 模式。"
+      },
+      "max_tokens": {
+        "name": "最大输出 Tokens",
+        "tooltip": "本次最多生成多少个新文本 token。"
+      },
+      "temperature": {
+        "name": "随机度",
+        "tooltip": "控制采样随机性。数值越低越稳定，越高越多样。"
+      },
+      "top_p": {
+        "name": "Top P",
+        "tooltip": "核采样概率阈值。0.95 是常用默认值。"
+      },
+      "top_k": {
+        "name": "Top K",
+        "tooltip": "每一步只在概率最高的 K 个候选 token 中采样；支持时设为 0 可关闭。"
+      },
+      "min_p": {
+        "name": "Min P",
+        "tooltip": "丢弃相对最佳 token 概率过低的候选项。"
+      },
+      "repeat_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "降低重复文本概率。1.0 表示不使用重复惩罚。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "其他输入一致时，用于复现本地采样结果。"
+      },
+      "max_image_edge": {
+        "name": "图片最长边",
+        "tooltip": "将每张图片或视频帧的最长边缩放到不超过此像素值。"
+      },
+      "max_image_frames": {
+        "name": "最多图片数",
+        "tooltip": "作为静态图片发送的 IMAGE 批次最大数量。"
+      },
+      "max_video_frames": {
+        "name": "最多视频帧数",
+        "tooltip": "从视频中均匀抽取并发送给模型的最大帧数。"
+      },
+      "video_transport": {
+        "name": "视频传输方式",
+        "tooltip": "API 可尝试原生 video_url 或使用抽帧；本地模型始终使用抽帧。"
+      },
+      "unload_after": {
+        "name": "生成后卸载",
+        "tooltip": "生成后释放此后端。开启可回收显存；关闭则连续对话更快。"
+      },
+      "image": {
+        "name": "图片",
+        "tooltip": "单张图片或包含多张静态图片的 IMAGE 批次。"
+      },
+      "video_frames": {
+        "name": "视频帧",
+        "tooltip": "已解码成 ComfyUI IMAGE 批次的视频帧。"
+      },
+      "video": {
+        "name": "视频",
+        "tooltip": "ComfyUI VIDEO 对象；本地推理时插件会自动均匀抽帧。"
+      },
+      "tools_json": {
+        "name": "工具定义 JSON",
+        "tooltip": "可选的 OpenAI function/tool schema，可填写单个 JSON 对象或数组。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "回答",
+        "tooltip": "去掉隐藏思考标签后的最终回答。"
+      },
+      "1": {
+        "name": "推理过程",
+        "tooltip": "后端提供 reasoning 内容时输出推理文本。"
+      },
+      "2": {
+        "name": "原始响应",
+        "tooltip": "原始回答内容或完整的工具调用消息。"
+      },
+      "3": {
+        "name": "运行统计",
+        "tooltip": "耗时、token 数、速度、媒体数量与后端类型。"
+      }
+    }
+  },
+  "MultimodalUnload": {
+    "display_name": "Multimodel · 卸载后端",
+    "description": "主动卸载本地模型，或关闭 API 客户端。",
+    "inputs": {
+      "backend": {
+        "name": "后端",
+        "tooltip": "需要卸载或关闭的后端实例。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "状态",
+        "tooltip": "便于阅读的卸载结果。"
+      }
+    }
+  }
+}

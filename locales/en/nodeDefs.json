@@ -1,0 +1,290 @@
+{
+  "MultimodalQwen38Loader": {
+    "display_name": "Multimodel Local Qwen3.8 Loader",
+    "description": "Loads a local Qwen3.8 GGUF model and its vision projector with CUDA llama.cpp.",
+    "inputs": {
+      "model_file": {
+        "name": "model file",
+        "tooltip": "Main Qwen3.8 GGUF model file. Q4_K_M is the current 32 GB VRAM baseline."
+      },
+      "mmproj_file": {
+        "name": "vision projector",
+        "tooltip": "Multimodal projector GGUF required for image and video-frame understanding."
+      },
+      "thinking_mode": {
+        "name": "thinking mode",
+        "tooltip": "Thinking enables internal reasoning; instruct is faster and more direct."
+      },
+      "context_length": {
+        "name": "context length",
+        "tooltip": "Maximum prompt plus response token window. Larger values reserve more KV-cache memory."
+      },
+      "batch_size": {
+        "name": "batch size",
+        "tooltip": "Prompt-processing batch size. Higher can be faster but uses more VRAM."
+      },
+      "micro_batch_size": {
+        "name": "micro batch size",
+        "tooltip": "Physical llama.cpp micro-batch size. Reduce this first if prompt processing runs out of VRAM."
+      },
+      "gpu_layers": {
+        "name": "GPU layers",
+        "tooltip": "Layers offloaded to GPU. -1 means all layers and is recommended for the RTX 5090."
+      },
+      "free_comfy_vram": {
+        "name": "free ComfyUI VRAM",
+        "tooltip": "Unload ComfyUI diffusion models before loading this large local VLM."
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "backend",
+        "tooltip": "Loaded local multimodal model backend for the Multimodel Chat node."
+      },
+      "1": {
+        "name": "backend info",
+        "tooltip": "Resolved model, context, GPU layers, mode, and load time."
+      }
+    }
+  },
+  "MultimodalAPIEnv": {
+    "display_name": "Multimodel API (Environment Variable)",
+    "description": "Sends one simple text or multi-image request using an API key from an environment variable.",
+    "inputs": {
+      "base_url": {
+        "name": "base URL",
+        "tooltip": "OpenAI-compatible API base URL; do not include /chat/completions."
+      },
+      "model": {
+        "name": "model",
+        "tooltip": "Exact model ID exposed by the API provider."
+      },
+      "api_key_env": {
+        "name": "API key environment variable",
+        "tooltip": "Environment variable containing the API key, for example OPENAI_API_KEY."
+      },
+      "prompt": {
+        "name": "prompt",
+        "tooltip": "Text instruction sent to the API; an IMAGE batch can be sent with it."
+      },
+      "max_tokens": {
+        "name": "max output tokens",
+        "tooltip": "Maximum output tokens. 0 omits this parameter and uses the provider default."
+      },
+      "temperature": {
+        "name": "temperature",
+        "tooltip": "Sampling temperature. 0 omits this parameter and uses the provider default."
+      },
+      "system_prompt": {
+        "name": "system prompt",
+        "tooltip": "Optional system instruction; leave blank for provider defaults."
+      },
+      "image": {
+        "name": "optional image batch",
+        "tooltip": "One image or an IMAGE batch; every batch item is sent in the same API request."
+      },
+      "max_image_edge": {
+        "name": "max image edge",
+        "tooltip": "Resize each image before upload so its longest edge does not exceed this value."
+      },
+      "max_image_frames": {
+        "name": "max images",
+        "tooltip": "Maximum number of images taken from the IMAGE batch for this request."
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "response",
+        "tooltip": "Final API response text."
+      },
+      "1": {
+        "name": "usage",
+        "tooltip": "Token usage JSON returned by the provider, when available."
+      },
+      "2": {
+        "name": "stats",
+        "tooltip": "Request timing and backend information."
+      }
+    }
+  },
+  "MultimodalAPIDirect": {
+    "display_name": "Multimodel API (Direct Key)",
+    "description": "Sends one simple text or multi-image request using a key entered in the node.",
+    "inputs": {
+      "base_url": {
+        "name": "base URL",
+        "tooltip": "OpenAI-compatible API base URL; do not include /chat/completions."
+      },
+      "model": {
+        "name": "model",
+        "tooltip": "Exact model ID exposed by the API provider."
+      },
+      "prompt": {
+        "name": "prompt",
+        "tooltip": "Text instruction sent to the API; an IMAGE batch can be sent with it."
+      },
+      "max_tokens": {
+        "name": "max output tokens",
+        "tooltip": "Maximum output tokens. 0 omits this parameter and uses the provider default."
+      },
+      "temperature": {
+        "name": "temperature",
+        "tooltip": "Sampling temperature. 0 omits this parameter and uses the provider default."
+      },
+      "system_prompt": {
+        "name": "system prompt",
+        "tooltip": "Optional system instruction; leave blank for provider defaults."
+      },
+      "image": {
+        "name": "optional image batch",
+        "tooltip": "One image or an IMAGE batch; every batch item is sent in the same API request."
+      },
+      "max_image_edge": {
+        "name": "max image edge",
+        "tooltip": "Resize each image before upload so its longest edge does not exceed this value."
+      },
+      "max_image_frames": {
+        "name": "max images",
+        "tooltip": "Maximum number of images taken from the IMAGE batch for this request."
+      },
+      "api_key": {
+        "name": "API key",
+        "tooltip": "API key used for this request; environment variables are not read."
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "response",
+        "tooltip": "Final API response text."
+      },
+      "1": {
+        "name": "usage",
+        "tooltip": "Token usage JSON returned by the provider, when available."
+      },
+      "2": {
+        "name": "stats",
+        "tooltip": "Request timing and backend information."
+      }
+    }
+  },
+  "MultimodalChat": {
+    "display_name": "Multimodel Chat",
+    "description": "Sends text, images, or video to either a local model or an OpenAI-compatible API backend.",
+    "inputs": {
+      "backend": {
+        "name": "backend",
+        "tooltip": "Connect a Multimodel local loader or API backend."
+      },
+      "prompt": {
+        "name": "prompt",
+        "tooltip": "User instruction sent with the attached image/video content."
+      },
+      "system_prompt": {
+        "name": "system prompt",
+        "tooltip": "System-level behavior and response-format instruction."
+      },
+      "thinking_mode": {
+        "name": "thinking mode",
+        "tooltip": "Use backend setting, force reasoning mode, or force direct instruct mode."
+      },
+      "max_tokens": {
+        "name": "max tokens",
+        "tooltip": "Maximum number of new text tokens to generate."
+      },
+      "temperature": {
+        "name": "temperature",
+        "tooltip": "Sampling randomness. Lower values are steadier; higher values are more varied."
+      },
+      "top_p": {
+        "name": "top P",
+        "tooltip": "Nucleus sampling threshold. 0.95 is a strong general default."
+      },
+      "top_k": {
+        "name": "top K",
+        "tooltip": "Restrict each token choice to the top K candidates. 0 disables it when supported."
+      },
+      "min_p": {
+        "name": "min P",
+        "tooltip": "Discard tokens whose probability is too small relative to the best token."
+      },
+      "repeat_penalty": {
+        "name": "repeat penalty",
+        "tooltip": "Penalizes repeated text. 1.0 disables the penalty."
+      },
+      "seed": {
+        "name": "seed",
+        "tooltip": "Random seed used for reproducible local sampling when all other inputs match."
+      },
+      "max_image_edge": {
+        "name": "max image edge",
+        "tooltip": "Resize each image/frame so its longest edge is at most this many pixels."
+      },
+      "max_image_frames": {
+        "name": "max image frames",
+        "tooltip": "Maximum number of IMAGE-batch items to send as still images."
+      },
+      "max_video_frames": {
+        "name": "max video frames",
+        "tooltip": "Maximum number of evenly sampled video frames sent to the model."
+      },
+      "video_transport": {
+        "name": "video transport",
+        "tooltip": "API video mode: native data URL when supported, or sampled frames. Local models always use frames."
+      },
+      "unload_after": {
+        "name": "unload after",
+        "tooltip": "Release this backend after generation. Enable to recover VRAM, disable for faster repeated chats."
+      },
+      "image": {
+        "name": "image",
+        "tooltip": "One image or an IMAGE batch of still images."
+      },
+      "video_frames": {
+        "name": "video frames",
+        "tooltip": "Decoded video frames as a ComfyUI IMAGE batch."
+      },
+      "video": {
+        "name": "video",
+        "tooltip": "ComfyUI VIDEO object; locally it is sampled into frames."
+      },
+      "tools_json": {
+        "name": "tools JSON",
+        "tooltip": "Optional OpenAI function/tool schema as one JSON object or an array."
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "response",
+        "tooltip": "Final assistant answer without hidden reasoning tags."
+      },
+      "1": {
+        "name": "reasoning",
+        "tooltip": "Reasoning text when the backend exposes it."
+      },
+      "2": {
+        "name": "raw response",
+        "tooltip": "Raw assistant content or complete tool-call message."
+      },
+      "3": {
+        "name": "stats",
+        "tooltip": "Timing, token, speed, media-count, and backend statistics."
+      }
+    }
+  },
+  "MultimodalUnload": {
+    "display_name": "Multimodel Backend Unload",
+    "description": "Explicitly unloads a local model or closes an API client.",
+    "inputs": {
+      "backend": {
+        "name": "backend",
+        "tooltip": "Backend instance to unload or close."
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "status",
+        "tooltip": "Human-readable unload result."
+      }
+    }
+  }
+}

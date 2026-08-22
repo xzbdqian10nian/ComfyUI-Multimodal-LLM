@@ -96,7 +96,7 @@ def _video_source(video: Any) -> str | io.BytesIO | None:
 
 
 def encode_video_bytes(video: Any, max_bytes: int = 256 * 1024 * 1024) -> bytes:
-    """Read a VIDEO object without transcoding, following the RH API node pattern."""
+    """Read a VIDEO object without transcoding for an API request."""
     source = _video_source(video)
     if isinstance(source, str):
         size = os.path.getsize(source)
@@ -189,4 +189,3 @@ def extract_video_frames(video: Any, max_frames: int, max_edge: int = 1024) -> l
             resized.append(image)
         frames = resized
     return frames
-

@@ -197,11 +197,15 @@ class Qwen38Runtime:
             verbose=False,
         )
 
-    def ensure_loaded(self) -> None:
+    def ensure_loaded(self, progress_callback=None) -> None:
         with self._lock:
             if self.llm is not None:
+                if callable(progress_callback):
+                    progress_callback("ready", 1.0)
                 return
             if self.settings.free_comfy_vram:
+                if callable(progress_callback):
+                    progress_callback("free_vram", 0.05)
                 _free_comfy_vram()
 
             try:
@@ -212,12 +216,16 @@ class Qwen38Runtime:
                 ) from exc
 
             started = time.perf_counter()
+            if callable(progress_callback):
+                progress_callback("projector", 0.18)
             self.chat_handler = self._make_handler()
             print(
                 "[Qwen3.8 Vision] Loading "
                 f"{self.settings.model_path.name}, ctx={self.settings.n_ctx}, "
                 f"gpu_layers={self.settings.n_gpu_layers}"
             )
+            if callable(progress_callback):
+                progress_callback("weights", 0.25)
             self.llm = Llama(
                 model_path=str(self.settings.model_path),
                 n_ctx=int(self.settings.n_ctx),
@@ -232,6 +240,8 @@ class Qwen38Runtime:
                 verbose=False,
             )
             self.load_seconds = time.perf_counter() - started
+            if callable(progress_callback):
+                progress_callback("ready", 1.0)
             print(f"[Qwen3.8 Vision] Model loaded in {self.load_seconds:.1f}s")
 
     def unload(self) -> None:
@@ -266,6 +276,10 @@ class Qwen38Runtime:
 
 
 class Qwen38ModelLoader:
+    # Retain this class ID for old workflows, but keep it out of the normal
+    # node search so users see only the unified Multimodel loader.
+    DEPRECATED = True
+    DESCRIPTION = "Legacy compatibility node. Use Multimodel Local Qwen3.8 Loader."
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -320,6 +334,8 @@ class Qwen38ModelLoader:
 
 
 class Qwen38VisionChat:
+    DEPRECATED = True
+    DESCRIPTION = "Legacy compatibility node. Use Multimodel Chat."
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -458,6 +474,8 @@ class Qwen38VisionChat:
 
 
 class Qwen38Unload:
+    DEPRECATED = True
+    DESCRIPTION = "Legacy compatibility node. Use Multimodel Backend Unload."
     @classmethod
     def INPUT_TYPES(cls):
         return {"required": {"model": ("QWEN38_MODEL",)}}
@@ -481,7 +499,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "Qwen38ModelLoader": "Qwen3.8 Model Loader (GGUF)",
-    "Qwen38VisionChat": "Qwen3.8 Vision Chat",
-    "Qwen38Unload": "Qwen3.8 Unload Model",
+    "Qwen38ModelLoader": "Multimodel Legacy Qwen3.8 Loader",
+    "Qwen38VisionChat": "Multimodel Legacy Qwen3.8 Chat",
+    "Qwen38Unload": "Multimodel Legacy Qwen3.8 Unload",
 }

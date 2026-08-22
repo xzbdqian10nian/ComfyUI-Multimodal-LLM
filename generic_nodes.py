@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Iterable
 from typing import Any
 
 import torch
@@ -27,6 +28,7 @@ from .media import (
     tensor_frame_to_pil,
 )
 from .nodes import Qwen38ModelLoader, _resolve_file
+from .progress import StatusTicker, make_progress, send_status, update_progress
 
 
 def _to_plain(value: Any) -> Any:
@@ -81,6 +83,97 @@ def _extract_completion(result: Any) -> tuple[dict[str, Any], dict[str, Any]]:
     if "content" in message:
         message["content"] = _content_text(message["content"])
     return message, data.get("usage") or {}
+
+
+def _merge_tool_call_delta(
+    tool_calls: dict[int, dict[str, Any]], delta_calls: Any
+) -> None:
+    """Merge streamed OpenAI tool-call fragments by their index."""
+    for position, raw_call in enumerate(_to_plain(delta_calls) or []):
+        if not isinstance(raw_call, dict):
+            continue
+        index = int(raw_call.get("index", position))
+        target = tool_calls.setdefault(
+            index,
+            {"id": "", "type": "function", "function": {"name": "", "arguments": ""}},
+        )
+        if raw_call.get("id"):
+            target["id"] = str(raw_call["id"])
+        if raw_call.get("type"):
+            target["type"] = str(raw_call["type"])
+        function = raw_call.get("function") or {}
+        if isinstance(function, dict):
+            target_function = target.setdefault("function", {"name": "", "arguments": ""})
+            if function.get("name"):
+                target_function["name"] += str(function["name"])
+            if function.get("arguments"):
+                target_function["arguments"] += str(function["arguments"])
+
+
+def _collect_stream(result: Any, progress_callback=None) -> Any:
+    """Turn a local/API completion stream into a regular response dictionary."""
+    plain = _to_plain(result)
+    if isinstance(plain, dict):
+        if callable(progress_callback):
+            usage = plain.get("usage") or {}
+            progress_callback(int(usage.get("completion_tokens") or 0))
+        return plain
+
+    if isinstance(result, (str, bytes, bytearray)) or not isinstance(result, Iterable):
+        return result
+
+    content_parts: list[str] = []
+    reasoning_parts: list[str] = []
+    tool_calls: dict[int, dict[str, Any]] = {}
+    finish_reason = None
+    usage: dict[str, Any] = {}
+    chunk_count = 0
+
+    for raw_chunk in result:
+        chunk = _to_plain(raw_chunk)
+        if not isinstance(chunk, dict):
+            continue
+        if isinstance(chunk.get("usage"), dict):
+            usage = chunk["usage"]
+        choices = chunk.get("choices") or []
+        if not choices:
+            continue
+        choice = choices[0] if isinstance(choices[0], dict) else _to_plain(choices[0])
+        if not isinstance(choice, dict):
+            continue
+        delta = choice.get("delta") or choice.get("message") or {}
+        if not isinstance(delta, dict):
+            continue
+        content = _content_text(delta.get("content"))
+        if content:
+            content_parts.append(content)
+        reasoning = (
+            delta.get("reasoning_content")
+            or delta.get("reasoning")
+            or delta.get("thinking_content")
+            or ""
+        )
+        if reasoning:
+            reasoning_parts.append(str(reasoning))
+        if delta.get("tool_calls"):
+            _merge_tool_call_delta(tool_calls, delta["tool_calls"])
+        finish_reason = choice.get("finish_reason") or finish_reason
+        chunk_count += 1
+        if callable(progress_callback):
+            progress_callback(chunk_count)
+
+    message: dict[str, Any] = {
+        "role": "assistant",
+        "content": "".join(content_parts),
+    }
+    if reasoning_parts:
+        message["reasoning_content"] = "".join(reasoning_parts)
+    if tool_calls:
+        message["tool_calls"] = [tool_calls[index] for index in sorted(tool_calls)]
+    return {
+        "choices": [{"index": 0, "message": message, "finish_reason": finish_reason}],
+        "usage": usage,
+    }
 
 
 def _split_message(message: dict[str, Any]) -> tuple[str, str, str]:
@@ -138,7 +231,7 @@ def _build_content(
             content.append({"type": "image_url", "image_url": {"url": pil_to_data_url(pil)}})
 
     # A VIDEO object can be sent as a native data URL to APIs that implement
-    # the RH/OpenAI `video_url` convention.  Local llama.cpp handlers instead
+    # the OpenAI-compatible `video_url` convention.  Local llama.cpp handlers instead
     # receive decoded frames, because they consume image parts.
     use_native_video = video is not None and api_backend and video_transport in {"auto", "video_url"}
     if use_native_video:
@@ -190,6 +283,7 @@ def _run_chat(
     video_frames: torch.Tensor | None,
     video: Any | None,
     tools_json: str | None,
+    progress_callback=None,
 ):
     is_api = getattr(backend, "backend_kind", "") == "openai_compatible"
     content = _build_content(
@@ -217,7 +311,7 @@ def _run_chat(
         "min_p": float(min_p),
         "repeat_penalty": float(repeat_penalty),
         "seed": int(seed),
-        "stream": False,
+        "stream": callable(progress_callback),
     }
     if is_api:
         kwargs["thinking_mode"] = thinking_mode
@@ -226,6 +320,7 @@ def _run_chat(
 
     started = time.perf_counter()
     result = backend.complete(**kwargs)
+    result = _collect_stream(result, progress_callback)
     elapsed = time.perf_counter() - started
     message, usage = _extract_completion(result)
     response, reasoning, raw = _split_message(message)
@@ -252,9 +347,99 @@ def _run_chat(
 class MultimodalQwen38Loader(Qwen38ModelLoader):
     """Common-socket version of the existing Qwen3.8 loader."""
 
+    DEPRECATED = False
     RETURN_TYPES = ("MLLM_BACKEND", "STRING")
     RETURN_NAMES = ("backend", "backend_info")
-    CATEGORY = "Multimodal LLM/Backends"
+    OUTPUT_TOOLTIPS = (
+        "Loaded local multimodal model backend for the Multimodel Chat node.",
+        "Resolved model, context, GPU layers, mode, and load time.",
+    )
+    CATEGORY = "Multimodel LLM/Backends"
+    DESCRIPTION = "Loads a local Qwen3.8 GGUF model and its vision projector with CUDA llama.cpp."
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model_file": (
+                    cls._model_choices(),
+                    {
+                        "default": cls._model_choices()[0],
+                        "tooltip": "Main Qwen3.8 GGUF model file. Q4_K_M is the current 32 GB VRAM baseline.",
+                    },
+                ),
+                "mmproj_file": (
+                    cls._mmproj_choices(),
+                    {
+                        "default": cls._mmproj_choices()[0],
+                        "tooltip": "Multimodal projector GGUF required for image and video-frame understanding.",
+                    },
+                ),
+                "thinking_mode": (
+                    ["thinking", "instruct"],
+                    {"default": "thinking", "tooltip": "Thinking enables internal reasoning; instruct is faster and more direct."},
+                ),
+                "context_length": (
+                    "INT",
+                    {
+                        "default": 8192,
+                        "min": 2048,
+                        "max": 262144,
+                        "step": 1024,
+                        "tooltip": "Maximum prompt plus response token window. Larger values reserve more KV-cache memory.",
+                    },
+                ),
+                "batch_size": (
+                    "INT",
+                    {
+                        "default": 1024,
+                        "min": 128,
+                        "max": 8192,
+                        "step": 128,
+                        "tooltip": "Prompt-processing batch size. Higher can be faster but uses more VRAM.",
+                    },
+                ),
+                "micro_batch_size": (
+                    "INT",
+                    {
+                        "default": 512,
+                        "min": 64,
+                        "max": 2048,
+                        "step": 64,
+                        "tooltip": "Physical llama.cpp micro-batch size. Reduce this first if prompt processing runs out of VRAM.",
+                    },
+                ),
+                "gpu_layers": (
+                    "INT",
+                    {
+                        "default": -1,
+                        "min": -1,
+                        "max": 256,
+                        "tooltip": "Layers offloaded to GPU. -1 means all layers and is recommended for the RTX 5090.",
+                    },
+                ),
+                "free_comfy_vram": (
+                    "BOOLEAN",
+                    {
+                        "default": True,
+                        "tooltip": "Unload ComfyUI diffusion models before loading this large local VLM.",
+                    },
+                ),
+            },
+            "hidden": {"unique_id": "UNIQUE_ID"},
+        }
+
+    @staticmethod
+    def _model_choices():
+        from .nodes import _choices
+
+        return _choices("model")
+
+    @staticmethod
+    def _mmproj_choices():
+        from .nodes import _choices
+
+        return _choices("mmproj")
 
     def load_model(
         self,
@@ -266,9 +451,14 @@ class MultimodalQwen38Loader(Qwen38ModelLoader):
         micro_batch_size: int,
         gpu_layers: int,
         free_comfy_vram: bool,
+        unique_id: str | None = None,
     ):
+        progress = make_progress(100, unique_id)
+        send_status("Preparing local model…", unique_id)
+        update_progress(progress, 2)
         model_path = _resolve_file(model_file, "model")
         mmproj_path = _resolve_file(mmproj_file, "mmproj")
+        update_progress(progress, 5)
         backend = LocalQwen38Backend(
             LocalRuntimeSettings(
                 model_path=model_path,
@@ -281,61 +471,232 @@ class MultimodalQwen38Loader(Qwen38ModelLoader):
                 free_comfy_vram=bool(free_comfy_vram),
             )
         )
-        backend.ensure_loaded()
+        phase_text = {
+            "free_vram": "Freeing ComfyUI VRAM…",
+            "projector": "Loading vision projector…",
+            "weights": f"Loading {model_path.name} weights…",
+            "ready": "Local model ready",
+        }
+
+        def report_load(phase: str, fraction: float):
+            percent = 5 + round(max(0.0, min(1.0, fraction)) * 94)
+            update_progress(progress, percent)
+            send_status(f"{phase_text.get(phase, phase)} [{percent}%]", unique_id)
+
+        backend.ensure_loaded(progress_callback=report_load)
+        update_progress(progress, 100)
+        send_status(f"Local model ready ({backend.load_seconds:.1f}s)", unique_id)
         return backend, backend.info()
 
 
-class MultimodalAPIBackend:
+class _MultimodalAPINodeBase:
+    """Shared implementation for the two deliberately simple API nodes."""
+
+    auth_mode = "env"
+
     @classmethod
     def INPUT_TYPES(cls):
+        required = {
+            "base_url": (
+                "STRING",
+                {
+                    "default": "https://api.openai.com/v1",
+                    "tooltip": "OpenAI-compatible API base URL; do not include /chat/completions.",
+                },
+            ),
+            "model": (
+                "STRING",
+                {"default": "", "tooltip": "Exact model ID exposed by the API provider."},
+            ),
+        }
+        if cls.auth_mode == "env":
+            required["api_key_env"] = (
+                "STRING",
+                {
+                    "default": "OPENAI_API_KEY",
+                    "tooltip": "Environment variable name containing the API key, for example OPENAI_API_KEY.",
+                },
+            )
+        else:
+            required["api_key"] = (
+                "STRING",
+                {
+                    "default": "",
+                    "password": True,
+                    "tooltip": "API key used for this request. It is not read from an environment variable.",
+                },
+            )
+        required.update(
+            {
+                "prompt": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "multiline": True,
+                        "tooltip": "Text instruction sent to the API, together with any attached image batch.",
+                    },
+                ),
+                "max_tokens": (
+                    "INT",
+                    {
+                        "default": 0,
+                        "min": 0,
+                        "max": 32768,
+                        "step": 16,
+                        "tooltip": "Maximum output tokens. 0 means do not send this parameter; use the provider default.",
+                    },
+                ),
+                "temperature": (
+                    "FLOAT",
+                    {
+                        "default": 0.0,
+                        "min": 0.0,
+                        "max": 2.0,
+                        "step": 0.05,
+                        "tooltip": "Sampling temperature. 0 means do not send this parameter; use the provider default.",
+                    },
+                ),
+            }
+        )
         return {
-            "required": {
-                "base_url": (
-                    "STRING",
-                    {"default": "https://api.openai.com/v1", "multiline": False},
-                ),
-                "model": ("STRING", {"default": "", "multiline": False}),
-                "api_key": (
-                    "STRING",
-                    {"default": "", "multiline": False, "dynamicPrompts": False},
-                ),
-                "api_key_env": ("STRING", {"default": "OPENAI_API_KEY", "multiline": False}),
-                "timeout_seconds": ("FLOAT", {"default": 120.0, "min": 1.0, "max": 3600.0, "step": 1.0}),
-            },
+            "required": required,
             "optional": {
-                "organization": ("STRING", {"default": "", "multiline": False}),
-                "headers_json": ("STRING", {"default": "", "multiline": True}),
-                "extra_body_json": ("STRING", {"default": "", "multiline": True}),
+                "system_prompt": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "multiline": True,
+                        "tooltip": "Optional system instruction; leave blank for the provider default.",
+                    },
+                ),
+                "image": (
+                    "IMAGE",
+                    {
+                        "tooltip": "Optional image input. Connect one image or an IMAGE batch; each batch item is sent in the same API request.",
+                    },
+                ),
+                "max_image_edge": (
+                    "INT",
+                    {
+                        "default": 2048,
+                        "min": 256,
+                        "max": 4096,
+                        "step": 64,
+                        "tooltip": "Resize each image before upload so its longest edge does not exceed this value.",
+                    },
+                ),
+                "max_image_frames": (
+                    "INT",
+                    {
+                        "default": 8,
+                        "min": 1,
+                        "max": 64,
+                        "step": 1,
+                        "tooltip": "Maximum number of images taken from an IMAGE batch for this request.",
+                    },
+                ),
             },
+            "hidden": {"unique_id": "UNIQUE_ID"},
         }
 
-    RETURN_TYPES = ("MLLM_BACKEND", "STRING")
-    RETURN_NAMES = ("backend", "backend_info")
-    FUNCTION = "create_backend"
-    CATEGORY = "Multimodal LLM/Backends"
+    RETURN_TYPES = ("STRING", "STRING", "STRING")
+    RETURN_NAMES = ("response", "usage", "stats")
+    OUTPUT_TOOLTIPS = (
+        "Final API response text.",
+        "Usage JSON returned by the provider, when available.",
+        "Request timing and backend information.",
+    )
+    FUNCTION = "request"
+    CATEGORY = "Multimodel LLM/API"
+    DESCRIPTION = "Sends one simple text or image-batch request to an OpenAI-compatible API."
+    OUTPUT_NODE = True
 
-    def create_backend(
+    def request(
         self,
         base_url: str,
         model: str,
-        api_key: str,
-        api_key_env: str,
-        timeout_seconds: float,
-        organization: str = "",
-        headers_json: str = "",
-        extra_body_json: str = "",
+        prompt: str,
+        max_tokens: int,
+        temperature: float,
+        api_key_env: str = "",
+        api_key: str = "",
+        system_prompt: str = "",
+        image: torch.Tensor | None = None,
+        max_image_edge: int = 2048,
+        max_image_frames: int = 8,
+        unique_id: str | None = None,
     ):
         backend = OpenAICompatibleBackend(
             base_url=base_url,
             api_key=api_key,
             api_key_env=api_key_env,
             model=model,
-            timeout=timeout_seconds,
-            organization=organization,
-            headers_json=headers_json,
-            extra_body_json=extra_body_json,
+            timeout=120.0,
         )
-        return backend, backend.info()
+        requested_max_tokens = int(max_tokens)
+        # If max_tokens is omitted (0), use an approximate UI scale while
+        # keeping 0 intact in the request so the API applies its own default.
+        progress_total = requested_max_tokens if requested_max_tokens > 0 else 100
+        progress = make_progress(progress_total, unique_id)
+        ticker = StatusTicker(unique_id)
+        update_progress(progress, 0, progress_total)
+        ticker.send("Preparing API request…", force=True)
+
+        def report_token(count: int):
+            visible = min(max(1, int(count)), progress_total - 1) if progress_total > 1 else 1
+            update_progress(progress, visible, progress_total)
+            ticker.send(f"API generating… {count} streamed chunks")
+
+        started = time.perf_counter()
+        try:
+            response, _reasoning, _raw, stats = _run_chat(
+                backend,
+                prompt,
+                system_prompt,
+                requested_max_tokens,
+                float(temperature),
+                0.0,
+                0,
+                0.0,
+                1.0,
+                0,
+                int(max_image_edge),
+                int(max_image_frames),
+                1,
+                "frames",
+                "backend_default",
+                image,
+                None,
+                None,
+                None,
+                report_token,
+            )
+            update_progress(progress, progress_total, progress_total)
+            ticker.send("API request complete", force=True)
+            usage = json.dumps(
+                {
+                    line.split("=", 1)[0]: line.split("=", 1)[1]
+                    for line in stats.splitlines()
+                    if "=" in line and line.split("=", 1)[0] in {"prompt_tokens", "completion_tokens"}
+                },
+                ensure_ascii=False,
+            )
+            elapsed = time.perf_counter() - started
+            direct_stats = f"{stats}\napi_elapsed={elapsed:.2f}s"
+            return {
+                "ui": {"text": (response,)},
+                "result": (response, usage, direct_stats),
+            }
+        finally:
+            backend.unload()
+
+
+class MultimodalAPIEnv(_MultimodalAPINodeBase):
+    auth_mode = "env"
+
+
+class MultimodalAPIDirect(_MultimodalAPINodeBase):
+    auth_mode = "direct"
 
 
 class MultimodalChat:
@@ -343,41 +704,49 @@ class MultimodalChat:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "backend": ("MLLM_BACKEND",),
+                "backend": ("MLLM_BACKEND", {"tooltip": "Connect a Multimodel local loader or API backend."}),
                 "prompt": (
                     "STRING",
-                    {"default": "请详细描述输入的图片或视频。", "multiline": True},
+                    {"default": "Please describe the input image or video in detail.", "multiline": True, "tooltip": "User instruction sent with the attached image/video content."},
                 ),
                 "system_prompt": (
                     "STRING",
-                    {"default": "你是运行在 ComfyUI 内的专业视觉理解助手。请准确、直接地回答。", "multiline": True},
+                    {"default": "You are a professional visual-understanding assistant running in ComfyUI. Answer accurately and directly.", "multiline": True, "tooltip": "System-level behavior and response-format instruction."},
                 ),
-                "thinking_mode": (["backend_default", "thinking", "instruct"], {"default": "backend_default"}),
-                "max_tokens": ("INT", {"default": 1024, "min": 16, "max": 32768, "step": 16}),
-                "temperature": ("FLOAT", {"default": 0.6, "min": 0.0, "max": 2.0, "step": 0.05}),
-                "top_p": ("FLOAT", {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01}),
-                "top_k": ("INT", {"default": 40, "min": 0, "max": 200}),
-                "min_p": ("FLOAT", {"default": 0.05, "min": 0.0, "max": 1.0, "step": 0.01}),
-                "repeat_penalty": ("FLOAT", {"default": 1.05, "min": 0.5, "max": 2.0, "step": 0.01}),
-                "seed": ("INT", {"default": 1, "min": 0, "max": 2**32 - 1}),
-                "max_image_edge": ("INT", {"default": 1024, "min": 256, "max": 4096, "step": 64}),
-                "max_image_frames": ("INT", {"default": 8, "min": 1, "max": 64}),
-                "max_video_frames": ("INT", {"default": 8, "min": 1, "max": 64}),
-                "video_transport": (["auto", "frames", "video_url"], {"default": "auto"}),
-                "unload_after": ("BOOLEAN", {"default": False}),
+                "thinking_mode": (["backend_default", "thinking", "instruct"], {"default": "backend_default", "tooltip": "Use backend setting, force reasoning mode, or force direct instruct mode."}),
+                "max_tokens": ("INT", {"default": 1024, "min": 16, "max": 32768, "step": 16, "tooltip": "Maximum number of new text tokens to generate."}),
+                "temperature": ("FLOAT", {"default": 0.6, "min": 0.0, "max": 2.0, "step": 0.05, "tooltip": "Sampling randomness. Lower values are steadier; higher values are more varied."}),
+                "top_p": ("FLOAT", {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Nucleus sampling threshold. 0.95 is a strong general default."}),
+                "top_k": ("INT", {"default": 40, "min": 0, "max": 200, "tooltip": "Restrict each token choice to the top K candidates. 0 disables it when supported."}),
+                "min_p": ("FLOAT", {"default": 0.05, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Discard tokens whose probability is too small relative to the best token."}),
+                "repeat_penalty": ("FLOAT", {"default": 1.05, "min": 0.5, "max": 2.0, "step": 0.01, "tooltip": "Penalizes repeated text. 1.0 disables the penalty."}),
+                "seed": ("INT", {"default": 1, "min": 0, "max": 2**32 - 1, "tooltip": "Random seed used for reproducible local sampling when all other inputs match."}),
+                "max_image_edge": ("INT", {"default": 1024, "min": 256, "max": 4096, "step": 64, "tooltip": "Resize each image/frame so its longest edge is at most this many pixels."}),
+                "max_image_frames": ("INT", {"default": 8, "min": 1, "max": 64, "tooltip": "Maximum number of IMAGE-batch items to send as still images."}),
+                "max_video_frames": ("INT", {"default": 8, "min": 1, "max": 64, "tooltip": "Maximum number of evenly sampled video frames sent to the model."}),
+                "video_transport": (["auto", "frames", "video_url"], {"default": "auto", "tooltip": "API video mode: native data URL when supported, or sampled frames. Local models always use frames."}),
+                "unload_after": ("BOOLEAN", {"default": False, "tooltip": "Release this backend after generation. Enable to recover VRAM, disable for faster repeated chats."}),
             },
             "optional": {
-                "image": ("IMAGE",),
-                "video_frames": ("IMAGE",),
-                "video": ("VIDEO",),
-                "tools_json": ("STRING", {"default": "", "multiline": True}),
+                "image": ("IMAGE", {"tooltip": "One image or an IMAGE batch of still images."}),
+                "video_frames": ("IMAGE", {"tooltip": "Decoded video frames as a ComfyUI IMAGE batch."}),
+                "video": ("VIDEO", {"tooltip": "ComfyUI VIDEO object; locally it is sampled into frames."}),
+                "tools_json": ("STRING", {"default": "", "multiline": True, "tooltip": "Optional OpenAI function/tool schema as one JSON object or an array."}),
             },
+            "hidden": {"unique_id": "UNIQUE_ID"},
         }
 
     RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING")
     RETURN_NAMES = ("response", "reasoning", "raw_response", "stats")
+    OUTPUT_TOOLTIPS = (
+        "Final assistant answer without hidden reasoning tags.",
+        "Reasoning text when the backend exposes it.",
+        "Raw assistant content or complete tool-call message.",
+        "Timing, token, speed, media-count, and backend statistics.",
+    )
     FUNCTION = "generate"
-    CATEGORY = "Multimodal LLM/Chat"
+    CATEGORY = "Multimodel LLM/Chat"
+    DESCRIPTION = "Sends text, images, or video to either a local model or an OpenAI-compatible API backend."
     OUTPUT_NODE = True
 
     def generate(
@@ -402,9 +771,22 @@ class MultimodalChat:
         video_frames: torch.Tensor | None = None,
         video: Any | None = None,
         tools_json: str | None = None,
+        unique_id: str | None = None,
     ):
         if backend is None or not callable(getattr(backend, "complete", None)):
             raise BackendError("请连接本插件的本地模型加载器或 API Backend 节点。")
+        total = max(1, int(max_tokens))
+        progress = make_progress(total, unique_id)
+        ticker = StatusTicker(unique_id)
+        update_progress(progress, 0, total)
+        ticker.send(f"Preparing multimodal input… (max_tokens={total})", force=True)
+
+        def report_token(count: int):
+            visible = min(max(1, int(count)), total - 1) if total > 1 else 1
+            update_progress(progress, visible, total)
+            percent = round(100 * visible / total)
+            ticker.send(f"Generating… {count} streamed chunks (display progress ~{percent}%)")
+
         try:
             response, reasoning, raw, stats = _run_chat(
                 backend,
@@ -426,7 +808,10 @@ class MultimodalChat:
                 video_frames,
                 video,
                 tools_json,
+                report_token,
             )
+            update_progress(progress, total, total)
+            ticker.send(f"Generation complete · {stats.splitlines()[0]}", force=True)
             print(f"[ComfyUI-Multimodal-LLM] Generation finished: {stats.splitlines()[0]}")
             return {
                 "ui": {"text": (response,)},
@@ -440,12 +825,14 @@ class MultimodalChat:
 class MultimodalUnload:
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"backend": ("MLLM_BACKEND",)}}
+        return {"required": {"backend": ("MLLM_BACKEND", {"tooltip": "Backend instance to unload or close."})}}
 
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("status",)
+    OUTPUT_TOOLTIPS = ("Human-readable unload result.",)
     FUNCTION = "unload"
-    CATEGORY = "Multimodal LLM/Backends"
+    CATEGORY = "Multimodel LLM/Backends"
+    DESCRIPTION = "Explicitly unloads a local model or closes an API client."
     OUTPUT_NODE = True
 
     def unload(self, backend: Any):
@@ -457,14 +844,16 @@ class MultimodalUnload:
 
 NODE_CLASS_MAPPINGS = {
     "MultimodalQwen38Loader": MultimodalQwen38Loader,
-    "MultimodalAPIBackend": MultimodalAPIBackend,
+    "MultimodalAPIEnv": MultimodalAPIEnv,
+    "MultimodalAPIDirect": MultimodalAPIDirect,
     "MultimodalChat": MultimodalChat,
     "MultimodalUnload": MultimodalUnload,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "MultimodalQwen38Loader": "Multimodal Local Qwen3.8 Loader",
-    "MultimodalAPIBackend": "Multimodal API Backend (RH/OpenAI Compatible)",
-    "MultimodalChat": "Multimodal Chat",
-    "MultimodalUnload": "Multimodal Backend Unload",
+    "MultimodalQwen38Loader": "Multimodel Local Qwen3.8 Loader",
+    "MultimodalAPIEnv": "Multimodel API · Environment Variable",
+    "MultimodalAPIDirect": "Multimodel API · Direct Key",
+    "MultimodalChat": "Multimodel Chat",
+    "MultimodalUnload": "Multimodel Backend Unload",
 }

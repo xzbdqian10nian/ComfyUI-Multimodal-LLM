@@ -83,11 +83,15 @@ class LocalQwen38Backend:
             verbose=False,
         )
 
-    def ensure_loaded(self) -> None:
+    def ensure_loaded(self, progress_callback=None) -> None:
         with self._lock:
             if self.llm is not None:
+                if callable(progress_callback):
+                    progress_callback("ready", 1.0)
                 return
             if self.settings.free_comfy_vram:
+                if callable(progress_callback):
+                    progress_callback("free_vram", 0.05)
                 _free_comfy_vram()
 
             try:
@@ -98,30 +102,63 @@ class LocalQwen38Backend:
                 ) from exc
 
             started = time.perf_counter()
+            if callable(progress_callback):
+                progress_callback("projector", 0.18)
             self.chat_handler = self._make_handler()
             print(
                 "[ComfyUI-Multimodal-LLM] Loading "
                 f"{self.settings.model_path.name}, ctx={self.settings.n_ctx}, "
                 f"gpu_layers={self.settings.n_gpu_layers}"
             )
-            self.llm = Llama(
-                model_path=str(self.settings.model_path),
-                n_ctx=int(self.settings.n_ctx),
-                n_batch=int(self.settings.n_batch),
-                n_ubatch=int(self.settings.n_ubatch),
-                n_gpu_layers=int(self.settings.n_gpu_layers),
-                chat_handler=self.chat_handler,
-                use_mmap=True,
-                use_mlock=False,
-                offload_kqv=True,
-                no_perf=False,
-                verbose=False,
-            )
+            if callable(progress_callback):
+                # llama-cpp-python performs this call synchronously and does
+                # not expose llama.cpp's weight-loading callback.  Keep the
+                # node status on this phase until Llama() returns instead of
+                # pretending that a byte-accurate percentage is available.
+                progress_callback("weights", 0.25)
+            # Llama() is synchronous and the Python binding does not expose a
+            # byte-level weight callback.  Emit a low-frequency heartbeat so
+            # long loads do not look like a hung ComfyUI process in the log.
+            load_heartbeat_done = threading.Event()
+
+            def _load_heartbeat():
+                while not load_heartbeat_done.wait(5.0):
+                    elapsed = time.perf_counter() - started
+                    print(
+                        "[ComfyUI-Multimodal-LLM] Loading weights still in progress "
+                        f"({elapsed:.0f}s elapsed; llama.cpp has no byte-level callback)",
+                        flush=True,
+                    )
+
+            heartbeat = threading.Thread(target=_load_heartbeat, name="multimodel-load-progress", daemon=True)
+            heartbeat.start()
+            try:
+                self.llm = Llama(
+                    model_path=str(self.settings.model_path),
+                    n_ctx=int(self.settings.n_ctx),
+                    n_batch=int(self.settings.n_batch),
+                    n_ubatch=int(self.settings.n_ubatch),
+                    n_gpu_layers=int(self.settings.n_gpu_layers),
+                    chat_handler=self.chat_handler,
+                    use_mmap=True,
+                    use_mlock=False,
+                    offload_kqv=True,
+                    no_perf=False,
+                    verbose=False,
+                )
+            finally:
+                load_heartbeat_done.set()
+                heartbeat.join(timeout=1.0)
             self.load_seconds = time.perf_counter() - started
+            if callable(progress_callback):
+                progress_callback("ready", 1.0)
             print(f"[ComfyUI-Multimodal-LLM] Local model loaded in {self.load_seconds:.1f}s")
 
     def complete(self, **kwargs):
         with self._lock:
+            # Internal ComfyUI execution metadata must never be forwarded to
+            # llama.cpp as a generation option.
+            kwargs.pop("_comfy_node_id", None)
             self.ensure_loaded()
             return self.llm.create_chat_completion(**kwargs)
 
@@ -174,8 +211,8 @@ def _parse_json_object(value: str, field_name: str) -> dict[str, Any]:
 class OpenAICompatibleBackend:
     """Lazy OpenAI-compatible chat-completions client.
 
-    This follows the same contract as the RunningHub RH LLM API node, while
-    keeping the client creation lazy so merely loading ComfyUI never makes a
+    This follows the standard OpenAI-compatible chat-completions contract,
+    while keeping the client creation lazy so merely loading ComfyUI never makes a
     network request.
     """
 
@@ -217,7 +254,7 @@ class OpenAICompatibleBackend:
             from openai import OpenAI
         except Exception as exc:
             raise BackendError(
-                "当前环境没有 openai 包；RH API 节点使用的 OpenAI SDK 应已在镜像中提供。"
+                "当前环境没有 openai 包；请安装 OpenAI-compatible API 所需的 SDK，或使用镜像中的标准库回退。"
             ) from exc
 
         # Some local OpenAI-compatible servers do not require a key.  The SDK
@@ -239,10 +276,20 @@ class OpenAICompatibleBackend:
             request: dict[str, Any] = {
                 "model": self.model,
                 "messages": kwargs["messages"],
-                "max_tokens": int(kwargs.get("max_tokens", 1024)),
-                "temperature": float(kwargs.get("temperature", 0.6)),
-                "top_p": float(kwargs.get("top_p", 0.95)),
+                "stream": bool(kwargs.get("stream", False)),
             }
+            # The simple API nodes use 0 as "leave this parameter out" so the
+            # provider can apply its own default.  This is also useful for
+            # endpoints that reject temperature=0 or max_tokens=0.
+            max_tokens = int(kwargs.get("max_tokens", 1024))
+            if max_tokens > 0:
+                request["max_tokens"] = max_tokens
+            temperature = float(kwargs.get("temperature", 0.6))
+            if temperature > 0:
+                request["temperature"] = temperature
+            top_p = float(kwargs.get("top_p", 0.95))
+            if top_p > 0:
+                request["top_p"] = top_p
             seed = kwargs.get("seed")
             if seed is not None and int(seed) >= 0:
                 request["seed"] = int(seed)
@@ -266,6 +313,10 @@ class OpenAICompatibleBackend:
             except BackendError as exc:
                 if "没有 openai 包" not in str(exc):
                     raise
+                # The stdlib fallback deliberately stays non-streaming: a
+                # correct JSON response is preferable to a partial SSE parser
+                # in the dependency-free path.
+                request["stream"] = False
                 return self._complete_with_urllib(request, extra_body)
 
             try:
