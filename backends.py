@@ -228,9 +228,10 @@ class LocalQwen38Backend:
     def info(self) -> str:
         return (
             f"backend=local_llama_cpp\nmodel={self.settings.model_path.name}\n"
-            f"mmproj={self.settings.mmproj_path.name}\nctx={self.n_ctx}\n"
+            f"mmproj={self.settings.mmproj_path.name}\n"
             f"gpu_layers={self.settings.n_gpu_layers}\n"
-            f"thinking={self.thinking}\nload_seconds={self.load_seconds:.1f}"
+            f"state={'loaded' if self.llm is not None else 'prepared'}\n"
+            f"load_seconds={self.load_seconds:.1f}"
         )
 
     def unload(self) -> None:
