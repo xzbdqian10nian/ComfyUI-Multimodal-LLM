@@ -1,103 +1,125 @@
 # ComfyUI Multimodal LLM
 
-统一的 ComfyUI 多模态 LLM 接口：本地 Qwen3.8 GGUF 使用本地对话节点，
-OpenAI-compatible API 使用独立的简化 API 节点。两条路径互不混用。
+面向 ComfyUI 的统一视觉大模型插件。当前提供本地 Qwen3.8 GGUF 和
+OpenAI-compatible API 两种后端，并通过同一个 `MLLM_BACKEND` 接口连接
+`Multimodel Chat`。
 
-## 当前基线
+插件只注册一套 `Multimodel` 节点，不创建 Python 虚拟环境，不升级 Torch、
+CUDA 或显卡驱动。优先复用镜像中已有的 CUDA llama.cpp 和 API 依赖。
 
-- 本地模型：`Qwen3.8-27B-UD-Q4_K_M.gguf`
-- 视觉 projector：`mmproj-BF16.gguf`
-- 模型目录：`/poddata/ComfyUI/models/LLM/Qwen3.8`
-- 本地后端：CUDA llama.cpp（使用镜像现有依赖）
-- API：OpenAI Chat Completions compatible
-- 输入：文本、IMAGE、IMAGE 批次
-- 输出：response、usage、stats（API）；response、reasoning、raw_response、stats（本地）
+## 节点
 
-Q4_K_M 只是当前 5090 的兼容性基线，不代表 BF16/FP16/FP8。后续可以在
-不改变工作流接口的情况下增加更高精度模型或其他本地后端。
+| 节点 | 作用 |
+| --- | --- |
+| `Multimodel Local Qwen3.8 Loader` | 加载本地 Qwen3.8 GGUF 主模型和视觉 projector |
+| `Multimodel API · Environment Variable` | 使用环境变量中的 API Key 调用兼容接口 |
+| `Multimodel API · Direct Key` | 在节点中直接填写 API Key 调用兼容接口 |
+| `Multimodel Chat` | 向本地模型或 API 后端发送文本、图片、视频帧 |
+| `Multimodel Backend Unload` | 主动释放本地模型或关闭 API 后端 |
 
-## 推荐节点连接
+## 本地模型
 
-### 本地 Qwen3.8
-
-```text
-Multimodel Local Qwen3.8 Loader
-                ↓ backend
-          Multimodel Chat
-```
-
-图片接 `image`。视频可使用 VHS/ComfyUI 视频节点输出的 `IMAGE` 批次，
-再接到 `video_frames`。
-
-### API
+默认模型目录：
 
 ```text
-Multimodel API（环境变量） 或 Multimodel API（直接 Key）
-     ↓ response / usage / stats
+/poddata/ComfyUI/models/LLM/Qwen3.8/
 ```
 
-API 节点参数：
+默认文件名：
 
-- `base_url`：例如 `https://api.openai.com/v1` 或平台提供的兼容地址
-- `model`：平台模型名
-- `Multimodel API（环境变量）`：只填写环境变量名，例如 `OPENAI_API_KEY`
-- `Multimodel API（直接 Key）`：直接填写 API 密钥，不读取环境变量
-- `prompt`、`max_tokens`、`temperature`：常用请求参数
-- `image`：可选的单图或多图 IMAGE 批次
+```text
+Qwen3.8-27B-UD-Q4_K_M.gguf
+mmproj-BF16.gguf
+```
 
-`max_tokens` 和 `temperature` 填 `0` 时不会把对应参数发给 API，使用服务商
-自己的默认值；不是把参数设置成数值 0。
+也可以通过 `QWEN38_MODEL_DIR` 指定其他目录。模型下载完成后再启动或刷新
+ComfyUI，加载器会自动扫描目录中的 `.gguf` 文件；带有 `.aria2` 的未完成
+下载不会显示为可选模型。
 
-建议使用环境变量保存 Key，不要直接写入工作流。例如启动 ComfyUI 前执行：
+推荐连接：
+
+```text
+Multimodel Local Qwen3.8 Loader ──► Multimodel Chat
+```
+
+5090/32GB 的 Q4_K_M 是当前兼容性基线。更高精度模型需要按照显存和上下文
+长度重新评估；插件本身不会自动替换 Torch、CUDA、驱动或 llama.cpp wheel。
+
+## API 后端
+
+两个 API 节点都是简化的 OpenAI Chat Completions-compatible 请求，填写：
+
+- `base_url`：服务商的 API 根地址，例如 `https://api.openai.com/v1`；
+- `model`：服务商提供的模型 ID；
+- `prompt`：发送给模型的指令；
+- 图片可接一张 `IMAGE` 或一个 `IMAGE` 批次。
+
+### 环境变量 Key
+
+启动 ComfyUI 前设置：
 
 ```bash
-export OPENAI_API_KEY='你的密钥'
+export OPENAI_API_KEY='your-api-key'
 ```
 
-节点中的环境变量字段填 `OPENAI_API_KEY` 即可。环境变量只填写“变量名”，
-不是把密钥本身填进去。
+节点中的 `api_key_env` 只填写变量名 `OPENAI_API_KEY`，不要填写 Key 本身。
 
-多图操作：先用 ComfyUI 的 `Image Batch` 节点把多路 IMAGE 合并成一个 IMAGE
-批次，再接到 API 节点的 `image`。批次中的每张图会放进同一次 API
-请求中，而不是拆成多个请求。文件夹批量加载节点若输出 IMAGE 批次，也可以
-直接连接。节点默认最多发送 8 张，可通过 `max_image_frames` 调整。
+### 直接填写 Key
 
-## 新节点
+在 `Multimodel API · Direct Key` 的密码输入框中填写 Key。该节点不读取环境
+变量，适合临时测试；不要把真实 Key 保存到公开工作流或提交到 Git。
 
-- `Multimodel Local Qwen3.8 Loader`
-- `Multimodel API（环境变量）`
-- `Multimodel API（直接 Key）`
-- `Multimodel Chat`
-- `Multimodel Backend Unload`
+### 参数行为
 
-所有可见节点统一使用 `Multimodel` 前缀。旧版 Qwen3.8 节点实现文件暂时保留，
-但不再注册到 ComfyUI，因此不会和统一节点重复显示。旧工作流中的旧节点需要
-替换为对应的 `Multimodel` 节点。
+- `max_tokens=0`：不发送 `max_tokens`，使用服务商默认值；
+- `temperature=0`：不发送 `temperature`，使用服务商默认值；
+- API 节点输出 `response`、`usage`、`stats`，可直接连接其他字符串节点。
 
-## 交互反馈与语言
+## 图片和视频
 
-- 本地模型加载时显示原生 ComfyUI 进度条和阶段状态。
-- 本地生成使用 `Multimodel Chat`，API 生成使用 `Multimodel API`；两者都会显示
-  ComfyUI 进度条，进度状态也会同步写入 `comfyUI.log`。
-- 每个输入参数和输出接口都提供鼠标悬停说明。
-- 节点名称、参数名称和悬停说明会随 ComfyUI 的 English / 简体中文设置切换。
-- 中文翻译位于 `locales/zh/nodeDefs.json`，英文位于
-  `locales/en/nodeDefs.json`；切换语言后无需改工作流参数。
+- 单张图片直接连接 `image`；
+- 多张图片使用 ComfyUI 的 Image Batch 或其他批量图像节点，作为一个
+  `IMAGE` 批次连接；
+- `max_image_frames` 控制一次请求最多取多少张图片，默认 8 张；
+- 视频可接 `video_frames`，插件会按 `max_video_frames` 均匀抽帧；
+- 本地 llama.cpp 后端始终使用视频帧，API 后端根据 `video_transport` 选择
+  兼容的视频数据或抽帧方式。
 
-## 旧工作流迁移
+图片批次是在同一次请求中发送多张图片，不会自动拆成多个独立请求。
 
-为了避免旧节点和新节点同时出现在菜单中，旧 class ID 不再注册。旧工作流中
-出现 `Qwen38ModelLoader`、`Qwen38VisionChat` 或 `Qwen38Unload` 时，请分别替换为：
+## 进度、日志和语言
 
-- `Multimodel Local Qwen3.8 Loader`
-- `Multimodel Chat`
-- `Multimodel Backend Unload`
+- 模型加载会显示准备显存、加载 projector、加载权重和完成等阶段；
+- 生成和 API 请求会显示 ComfyUI 进度，并把关键状态写入 `comfyUI.log`；
+- 加载权重时 llama.cpp 没有字节级回调，日志会用心跳提示仍在加载，避免被
+  误认为进程卡死；
+- 节点参数带有鼠标悬停说明；
+- 节点名称、参数名和说明随 ComfyUI 的 English / 简体中文设置切换；
+- 翻译文件位于 `locales/en/nodeDefs.json` 和 `locales/zh/nodeDefs.json`。
 
-这是为了保证节点菜单只保留一套清晰的节点；旧工作流需要手动替换一次。
+## 安装和更新
 
-## 依赖策略
+在 ComfyUI 的 `custom_nodes` 目录执行：
 
-插件不会自动创建 Python 环境，也不会主动升级 Torch、CUDA 或驱动。
-本地后端使用镜像中已有的视觉版 `llama-cpp-python`；API 节点优先使用
-镜像已有的 `openai` SDK，若 SDK 不存在则使用 Python 标准库 HTTP 作为
-轻量回退。
+```bash
+git clone https://github.com/xzbdqian10nian/ComfyUI-Multimodal-LLM.git
+```
+
+更新现有插件：
+
+```bash
+git -C ComfyUI-Multimodal-LLM pull --ff-only
+```
+
+然后重启 ComfyUI。插件只使用镜像现有依赖；只有在实际缺少 API 或本地后端
+依赖时，才按镜像维护策略补装，不要为了本插件单独创建新环境。
+
+## 问题排查
+
+如果节点没有出现：
+
+1. 确认插件目录位于 `ComfyUI/custom_nodes/ComfyUI-Multimodal-LLM`；
+2. 查看 `comfyUI.log` 中是否有该目录的加载记录；
+3. 确认浏览器已强制刷新；
+4. 本地模型需确认两个 GGUF 文件存在且没有对应的 `.aria2` 文件；
+5. API 需确认 `base_url`、模型 ID 和 Key 来源填写正确。

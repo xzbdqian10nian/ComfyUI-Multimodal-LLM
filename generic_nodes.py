@@ -1,9 +1,4 @@
-"""Generic backend and chat nodes.
-
-The original Qwen3.8 nodes remain in :mod:`nodes` for workflow compatibility.
-These nodes use a common ``MLLM_BACKEND`` socket so a local model loader or an
-OpenAI-compatible API can feed the same chat node.
-"""
+"""Visible ComfyUI nodes for local and API multimodal LLM backends."""
 
 from __future__ import annotations
 
@@ -27,7 +22,7 @@ from .media import (
     sample_image_batch,
     tensor_frame_to_pil,
 )
-from .nodes import Qwen38ModelLoader, _resolve_file
+from .nodes import _choices, _resolve_file
 from .progress import StatusTicker, make_progress, send_status, update_progress
 
 
@@ -344,10 +339,8 @@ def _run_chat(
     return response, reasoning, raw, stats
 
 
-class MultimodalQwen38Loader(Qwen38ModelLoader):
-    """Common-socket version of the existing Qwen3.8 loader."""
-
-    DEPRECATED = False
+class MultimodalQwen38Loader:
+    """Load the configured local Qwen3.8 GGUF backend."""
     RETURN_TYPES = ("MLLM_BACKEND", "STRING")
     RETURN_NAMES = ("backend", "backend_info")
     OUTPUT_TOOLTIPS = (
@@ -431,14 +424,10 @@ class MultimodalQwen38Loader(Qwen38ModelLoader):
 
     @staticmethod
     def _model_choices():
-        from .nodes import _choices
-
         return _choices("model")
 
     @staticmethod
     def _mmproj_choices():
-        from .nodes import _choices
-
         return _choices("mmproj")
 
     def load_model(
