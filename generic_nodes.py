@@ -287,10 +287,16 @@ def _run_chat(
         video_transport,
         is_api,
     )
-    messages = [
-        {"role": "system", "content": system_prompt.strip()},
-        {"role": "user", "content": content},
-    ]
+    # Some multimodal chat templates (including Qwen3.8's MTMD template)
+    # insert their own default system message when none is supplied.  Passing
+    # an empty system message leaves it in second position after that default
+    # and the template rejects the prompt with "System message must be at the
+    # beginning".  Omit empty optional messages instead of serializing them.
+    messages = []
+    cleaned_system_prompt = system_prompt.strip()
+    if cleaned_system_prompt:
+        messages.append({"role": "system", "content": cleaned_system_prompt})
+    messages.append({"role": "user", "content": content})
     tools = _parse_tools(tools_json)
     kwargs: dict[str, Any] = {
         "messages": messages,
