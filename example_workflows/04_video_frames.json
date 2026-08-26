@@ -1,8 +1,8 @@
 {
   "id": "24edb81d-2dc6-4395-b6fa-9dbddce7abd5",
   "revision": 0,
-  "last_node_id": 99,
-  "last_link_id": 3,
+  "last_node_id": 101,
+  "last_link_id": 4,
   "nodes": [
     {
       "id": 99,
@@ -417,7 +417,9 @@
         {
           "name": "response",
           "type": "STRING",
-          "links": null
+          "links": [
+            4
+          ]
         },
         {
           "name": "reasoning",
@@ -458,6 +460,68 @@
         false,
         ""
       ]
+    },
+    {
+      "id": 100,
+      "type": "MarkdownNote",
+      "pos": [
+        -520,
+        120
+      ],
+      "size": [
+        480,
+        470
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "Qwen3.8 VL · Model setup",
+      "properties": {
+        "Node name for S&R": "MarkdownNote",
+        "cnr_id": "comfy-core"
+      },
+      "widgets_values": [
+        "## Qwen3.8 VL model\n\n### Model structure\n- Qwen3.8-27B dense multimodal language model\n- GGUF main weights + matching `mmproj` vision projector\n- Local inference through CUDA `llama.cpp`\n\n### Model directory\nPlace both files in:\n\n`ComfyUI/models/LLM/Qwen3.8/`\n\n### Recommended starting point\nUse Unsloth UD-Q4_K_M with its matching `mmproj-BF16.gguf` on a 32 GB card. Keep the main model and projector from the same source.\n\n### Downloads\n- Unsloth: https://huggingface.co/unsloth/Qwen3.8-27B-GGUF\n- Huihui Abliterated: https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF\n- Orcarouter Uncensored: https://huggingface.co/orcarouter/Qwen3.8-27B-Uncensored-GGUF\n\n### Basic connection\n`Qwen3.8 VL Local Loader` → `Vision LLM Chat` → `Preview as Text`\n"
+      ],
+      "color": "#243447",
+      "bgcolor": "#31465c"
+    },
+    {
+      "id": 101,
+      "type": "PreviewAny",
+      "pos": [
+        1600,
+        120
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "ANY",
+          "link": 4
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Preview as Text",
+      "properties": {
+        "Node name for S&R": "PreviewAny",
+        "cnr_id": "comfy-core"
+      },
+      "widgets_values": []
     }
   ],
   "links": [
@@ -484,6 +548,14 @@
       2,
       17,
       "IMAGE"
+    ],
+    [
+      4,
+      2,
+      0,
+      101,
+      0,
+      "STRING"
     ]
   ],
   "groups": [],
