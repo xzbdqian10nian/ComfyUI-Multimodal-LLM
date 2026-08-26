@@ -1,10 +1,10 @@
-# ComfyUI Multimodal LLM
+# ComfyUI Qwen3.8 VL
 
 面向 ComfyUI 的统一视觉大模型插件。当前提供本地 Qwen3.8 GGUF 和
 OpenAI-compatible API 两种后端，并通过同一个 `MLLM_BACKEND` 接口连接
-`Multimodel Chat`。
+`Vision LLM Chat`。
 
-插件只注册一套 `Multimodel` 节点。模型路径通过 ComfyUI 官方的
+插件只注册一套 Qwen3.8 VL / Vision LLM 节点。模型路径通过 ComfyUI 官方的
 `folder_paths.models_dir` 获取，不写死操作系统、云平台、用户目录、显卡型号或
 存储挂载点；适用于标准 ComfyUI、整合包及云端部署。
 
@@ -12,11 +12,11 @@ OpenAI-compatible API 两种后端，并通过同一个 `MLLM_BACKEND` 接口连
 
 | 节点 | 作用 |
 | --- | --- |
-| `Multimodel Local Qwen3.8 Loader` | 加载本地 Qwen3.8 GGUF 主模型和视觉 projector |
-| `Multimodel API · Environment Variable` | 使用环境变量中的 API Key 调用兼容接口 |
-| `Multimodel API · Direct Key` | 在节点中直接填写 API Key 调用兼容接口 |
-| `Multimodel Chat` | 向本地模型或 API 后端发送文本、图片、视频帧 |
-| `Multimodel Backend Unload` | 主动释放本地模型或关闭 API 后端 |
+| `Qwen3.8 VL Local Loader` | 加载本地 Qwen3.8 GGUF 主模型和视觉 projector |
+| `OpenAI-Compatible API · Environment Variable` | 使用环境变量中的 API Key 调用任意兼容接口 |
+| `OpenAI-Compatible API · Direct Key` | 在节点中直接填写 API Key 调用任意兼容接口 |
+| `Vision LLM Chat` | 向本地模型或 API 后端发送文本、图片、视频帧 |
+| `Backend Unload` | 主动释放本地模型或关闭 API 后端 |
 
 ## 本地模型
 
@@ -64,10 +64,10 @@ ComfyUI/models/LLM/Qwen3.8/
 推荐连接：
 
 ```text
-Multimodel Local Qwen3.8 Loader ──► Multimodel Chat
+Qwen3.8 VL Local Loader ──► Vision LLM Chat
 ```
 
-`Multimodel Chat` 默认 `max_tokens=4096`，用于避免长结构化回答在 1024 tokens
+`Vision LLM Chat` 默认 `max_tokens=4096`，用于避免长结构化回答在 1024 tokens
 附近被截断。它只是最大输出上限；简单问题在模型生成结束标记后仍会提前停止，
 不会被强制扩写到 4096 tokens。
 
@@ -96,7 +96,7 @@ export OPENAI_API_KEY='your-api-key'
 
 ### 直接填写 Key
 
-在 `Multimodel API · Direct Key` 的密码输入框中填写 Key。该节点不读取环境
+在 `OpenAI-Compatible API · Direct Key` 的密码输入框中填写 Key。该节点不读取环境
 变量，适合临时测试；不要把真实 Key 保存到公开工作流或提交到 Git。
 
 ### 参数行为

@@ -1,4 +1,4 @@
-"""ComfyUI nodes for local and API-backed multimodal LLM inference."""
+"""ComfyUI Qwen3.8 VL and OpenAI-compatible vision LLM nodes."""
 
 from .generic_nodes import (
     NODE_CLASS_MAPPINGS as GENERIC_NODE_CLASS_MAPPINGS,

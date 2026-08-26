@@ -370,10 +370,10 @@ class MultimodalQwen38Loader:
     RETURN_TYPES = ("MLLM_BACKEND", "STRING")
     RETURN_NAMES = ("backend", "backend_info")
     OUTPUT_TOOLTIPS = (
-        "Loaded local multimodal model backend for the Multimodel Chat node.",
+        "Loaded local multimodal model backend for the Vision LLM Chat node.",
         "Resolved model, projector, GPU layers, and backend state.",
     )
-    CATEGORY = "Multimodel LLM/Backends"
+    CATEGORY = "Vision LLM/Backends"
     DESCRIPTION = "Loads a local Qwen3.8 GGUF model and its vision projector with CUDA llama.cpp."
     FUNCTION = "load_model"
 
@@ -578,7 +578,7 @@ class _MultimodalAPINodeBase:
         "Request timing and backend information.",
     )
     FUNCTION = "request"
-    CATEGORY = "Multimodel LLM/API"
+    CATEGORY = "Vision LLM/API"
     DESCRIPTION = "Sends one simple text or image-batch request to an OpenAI-compatible API."
     OUTPUT_NODE = True
 
@@ -680,7 +680,7 @@ class MultimodalChat:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "backend": ("MLLM_BACKEND", {"tooltip": "Connect a Multimodel local loader or API backend."}),
+                "backend": ("MLLM_BACKEND", {"tooltip": "Connect the Qwen3.8 VL local loader or any OpenAI-compatible API backend."}),
                 "prompt": (
                     "STRING",
                     {"default": "Please describe the input image or video in detail.", "multiline": True, "tooltip": "User instruction sent with the attached image/video content."},
@@ -738,8 +738,8 @@ class MultimodalChat:
         "Timing, token, speed, media-count, and backend statistics.",
     )
     FUNCTION = "generate"
-    CATEGORY = "Multimodel LLM/Chat"
-    DESCRIPTION = "Sends text, images, or video to either a local model or an OpenAI-compatible API backend."
+    CATEGORY = "Vision LLM/Chat"
+    DESCRIPTION = "Sends text, images, or video to a local Qwen3.8 VL model or any OpenAI-compatible API backend."
     OUTPUT_NODE = True
 
     def generate(
@@ -867,14 +867,14 @@ class MultimodalUnload:
     RETURN_NAMES = ("status",)
     OUTPUT_TOOLTIPS = ("Human-readable unload result.",)
     FUNCTION = "unload"
-    CATEGORY = "Multimodel LLM/Backends"
+    CATEGORY = "Vision LLM/Backends"
     DESCRIPTION = "Explicitly unloads a local model or closes an API client."
     OUTPUT_NODE = True
 
     def unload(self, backend: Any):
         if callable(getattr(backend, "unload", None)):
             backend.unload()
-        status = "Multimodal LLM backend unloaded"
+        status = "Vision LLM backend unloaded"
         return {"ui": {"text": (status,)}, "result": (status,)}
 
 
@@ -887,9 +887,9 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "MultimodalQwen38Loader": "Multimodel Local Qwen3.8 Loader",
-    "MultimodalAPIEnv": "Multimodel API · Environment Variable",
-    "MultimodalAPIDirect": "Multimodel API · Direct Key",
-    "MultimodalChat": "Multimodel Chat",
-    "MultimodalUnload": "Multimodel Backend Unload",
+    "MultimodalQwen38Loader": "Qwen3.8 VL Local Loader",
+    "MultimodalAPIEnv": "OpenAI-Compatible API · Environment Variable",
+    "MultimodalAPIDirect": "OpenAI-Compatible API · Direct Key",
+    "MultimodalChat": "Vision LLM Chat",
+    "MultimodalUnload": "Backend Unload",
 }

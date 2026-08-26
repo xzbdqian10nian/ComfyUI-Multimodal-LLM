@@ -1,6 +1,6 @@
 {
   "MultimodalQwen38Loader": {
-    "display_name": "Multimodel · 本地 Qwen3.8 加载器",
+    "display_name": "Qwen3.8 VL · 本地加载器",
     "description": "通过 CUDA llama.cpp 加载本地 Qwen3.8 GGUF 主模型和视觉投影模型。",
     "inputs": {
       "model_file": {
@@ -31,7 +31,7 @@
     "outputs": {
       "0": {
         "name": "后端",
-        "tooltip": "已加载的本地多模态模型后端，连接到 Multimodel 对话节点。"
+        "tooltip": "已加载的本地 Qwen3.8 VL 后端，连接到 Vision LLM 对话节点。"
       },
       "1": {
         "name": "后端信息",
@@ -40,7 +40,7 @@
     }
   },
   "MultimodalAPIEnv": {
-    "display_name": "Multimodel · API（环境变量）",
+    "display_name": "OpenAI 兼容 API · 环境变量",
     "description": "使用系统环境变量中的 API 密钥发送一次简单的文本或多图请求。",
     "inputs": {
       "base_url": {
@@ -96,7 +96,7 @@
     }
   },
   "MultimodalAPIDirect": {
-    "display_name": "Multimodel · API（直接 Key）",
+    "display_name": "OpenAI 兼容 API · 直接 Key",
     "description": "使用节点中直接填写的 API 密钥发送一次简单的文本或多图请求。",
     "inputs": {
       "base_url": {
@@ -152,12 +152,12 @@
     }
   },
   "MultimodalChat": {
-    "display_name": "Multimodel · 多模态对话",
+    "display_name": "Vision LLM · 多模态对话",
     "description": "把文字、图片或视频发送给本地模型或 OpenAI 兼容 API 后端。",
     "inputs": {
       "backend": {
         "name": "后端",
-        "tooltip": "连接 Multimodel 本地模型加载器或 API 后端。"
+        "tooltip": "连接 Qwen3.8 VL 本地加载器或任意 OpenAI 兼容 API 后端。"
       },
       "prompt": {
         "name": "提示词",
@@ -252,7 +252,7 @@
     }
   },
   "MultimodalUnload": {
-    "display_name": "Multimodel · 卸载后端",
+    "display_name": "后端卸载",
     "description": "主动卸载本地模型，或关闭 API 客户端。",
     "inputs": {
       "backend": {

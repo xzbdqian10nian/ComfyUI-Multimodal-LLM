@@ -1,6 +1,6 @@
 {
   "MultimodalQwen38Loader": {
-    "display_name": "Multimodel Local Qwen3.8 Loader",
+    "display_name": "Qwen3.8 VL Local Loader",
     "description": "Loads a local Qwen3.8 GGUF model and its vision projector with CUDA llama.cpp.",
     "inputs": {
       "model_file": {
@@ -31,7 +31,7 @@
     "outputs": {
       "0": {
         "name": "backend",
-        "tooltip": "Loaded local multimodal model backend for the Multimodel Chat node."
+        "tooltip": "Loaded local Qwen3.8 VL backend for the Vision LLM Chat node."
       },
       "1": {
         "name": "backend info",
@@ -40,7 +40,7 @@
     }
   },
   "MultimodalAPIEnv": {
-    "display_name": "Multimodel API (Environment Variable)",
+    "display_name": "OpenAI-Compatible API · Environment Variable",
     "description": "Sends one simple text or multi-image request using an API key from an environment variable.",
     "inputs": {
       "base_url": {
@@ -96,7 +96,7 @@
     }
   },
   "MultimodalAPIDirect": {
-    "display_name": "Multimodel API (Direct Key)",
+    "display_name": "OpenAI-Compatible API · Direct Key",
     "description": "Sends one simple text or multi-image request using a key entered in the node.",
     "inputs": {
       "base_url": {
@@ -152,12 +152,12 @@
     }
   },
   "MultimodalChat": {
-    "display_name": "Multimodel Chat",
+    "display_name": "Vision LLM · Multimodal Chat",
     "description": "Sends text, images, or video to either a local model or an OpenAI-compatible API backend.",
     "inputs": {
       "backend": {
         "name": "backend",
-        "tooltip": "Connect a Multimodel local loader or API backend."
+        "tooltip": "Connect the Qwen3.8 VL local loader or any OpenAI-compatible API backend."
       },
       "prompt": {
         "name": "prompt",
@@ -252,7 +252,7 @@
     }
   },
   "MultimodalUnload": {
-    "display_name": "Multimodel Backend Unload",
+    "display_name": "Backend Unload",
     "description": "Explicitly unloads a local model or closes an API client.",
     "inputs": {
       "backend": {

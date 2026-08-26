@@ -125,7 +125,7 @@
           "links": null
         }
       ],
-      "title": "Multimodel · Qwen3.8 Local Loader",
+      "title": "Qwen3.8 VL Local Loader",
       "properties": {
         "Node name for S&R": "MultimodalQwen38Loader",
         "cnr_id": "ComfyUI-Multimodal-LLM"
@@ -379,7 +379,7 @@
           "links": null
         }
       ],
-      "title": "Multimodel · Chat",
+      "title": "Vision LLM Chat",
       "properties": {
         "Node name for S&R": "MultimodalChat",
         "cnr_id": "ComfyUI-Multimodal-LLM"
