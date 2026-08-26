@@ -128,7 +128,7 @@
       "title": "Qwen3.8 VL Local Loader",
       "properties": {
         "Node name for S&R": "MultimodalQwen38Loader",
-        "cnr_id": "ComfyUI-Multimodal-LLM"
+        "cnr_id": "qwen38-vl"
       },
       "widgets_values": [
         "Qwen3.8-27B-UD-Q4_K_M.gguf",
@@ -440,7 +440,7 @@
       "title": "Vision LLM Chat",
       "properties": {
         "Node name for S&R": "MultimodalChat",
-        "cnr_id": "ComfyUI-Multimodal-LLM"
+        "cnr_id": "qwen38-vl"
       },
       "widgets_values": [
         "请根据这些视频帧概括人物、动作变化、场景和镜头内容。",
