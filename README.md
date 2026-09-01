@@ -105,6 +105,22 @@ Use `OpenAI-Compatible API · Direct Key` when a temporary key is more convenien
 - `seed`: pass a seed when the provider supports it.
 - API progress is conservative when the provider does not expose a total output limit; it advances gradually and completes at the end of a normal response.
 
+### Environment-key endpoint security
+
+The environment-variable node never sends a server-side key to an arbitrary
+workflow-supplied host. It accepts exact HTTPS host matches from the server-side
+allow-list; the default is `api.openai.com`. To allow another provider, set the
+following before starting ComfyUI:
+
+```bash
+export COMFYUI_API_ALLOWED_HOSTS='api.openai.com,api.example.com'
+```
+
+Entries are exact `host` or `host:port` values; wildcards are not accepted. The
+Direct Key node is separate and can use another endpoint because it sends only
+the key explicitly entered by the workflow user, never a server environment
+variable. Use HTTPS for public endpoints.
+
 ## Images and video
 
 - Connect one image directly to `image`.

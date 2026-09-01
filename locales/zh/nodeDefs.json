@@ -45,7 +45,7 @@
     "inputs": {
       "base_url": {
         "name": "接口基础地址",
-        "tooltip": "OpenAI 兼容接口的 base URL，不要包含 /chat/completions。"
+        "tooltip": "OpenAI 兼容接口的 base URL，不要包含 /chat/completions。环境变量 Key 模式只能访问管理员允许的主机。"
       },
       "model": {
         "name": "模型名称",
@@ -53,7 +53,7 @@
       },
       "api_key_env": {
         "name": "密钥环境变量",
-        "tooltip": "保存 API 密钥的环境变量名称，例如 OPENAI_API_KEY。"
+        "tooltip": "保存 API 密钥的环境变量名称；请求主机必须在管理员允许列表中。"
       },
       "prompt": {
         "name": "提示词",

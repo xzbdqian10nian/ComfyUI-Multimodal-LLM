@@ -105,6 +105,16 @@ export OPENAI_API_KEY='your-api-key'
 - `seed`：服务商支持时发送随机种子；
 - 服务商没有提供输出总量时，API 进度条会保守推进，并在正常响应结束后完成。
 
+### 环境变量 Key 的地址安全限制
+
+环境变量节点不会把服务器上的 Key 发送到工作流任意填写的地址。它只允许访问服务器端允许列表中的精确 HTTPS 主机，默认允许 `api.openai.com`。如果要允许其他服务商，请在启动 ComfyUI 前设置：
+
+```bash
+export COMFYUI_API_ALLOWED_HOSTS='api.openai.com,api.example.com'
+```
+
+列表只接受精确的 `host` 或 `host:port`，不接受通配符。直接 Key 节点与环境变量节点分开；它可以使用其他地址，因为它只发送工作流用户在节点中明确填写的 Key，不会读取服务器环境变量。公网接口请使用 HTTPS。
+
 ## 图片和视频
 
 - 单图直接连接到 `image`。

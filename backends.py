@@ -18,6 +18,7 @@ import weakref
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import torch
 
@@ -38,6 +39,85 @@ def _free_comfy_vram() -> None:
 
 class BackendError(RuntimeError):
     """A user-facing backend configuration or request error."""
+
+
+API_ALLOWED_HOSTS_ENV = "COMFYUI_API_ALLOWED_HOSTS"
+# This is deliberately a host allow-list, not a URL prefix check.  The
+# administrator can replace this default with exact hosts through
+# COMFYUI_API_ALLOWED_HOSTS; a workflow cannot change that process setting.
+DEFAULT_API_ALLOWED_HOSTS = frozenset({"api.openai.com"})
+
+
+def _normalise_allowed_host(value: str) -> str | None:
+    """Normalise one administrator-supplied host[:port] allow-list entry."""
+    value = value.strip()
+    if not value:
+        return None
+    parsed = urlsplit(value if "://" in value else f"//{value}")
+    if parsed.username or parsed.password or parsed.path not in {"", "/"}:
+        return None
+    try:
+        host = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return None
+    if not host:
+        return None
+    host = host.rstrip(".").lower()
+    return f"{host}:{port}" if port is not None else host
+
+
+def _api_allowed_hosts() -> set[str]:
+    """Return the server-side allow-list for environment-key API requests."""
+    configured = os.getenv(API_ALLOWED_HOSTS_ENV, "")
+    configured_hosts = set()
+    for value in configured.split(","):
+        normalised = _normalise_allowed_host(value)
+        if normalised:
+            configured_hosts.add(normalised)
+    return configured_hosts or set(DEFAULT_API_ALLOWED_HOSTS)
+
+
+def _validate_env_api_endpoint(base_url: str) -> None:
+    """Prevent a workflow from exfiltrating a server-side API key.
+
+    The API environment-variable node is intentionally restricted to an
+    administrator-controlled host allow-list.  Direct-key nodes do not call
+    this function because their key is supplied by the workflow itself rather
+    than read from the ComfyUI server environment.
+    """
+    parsed = urlsplit(base_url)
+    if parsed.username or parsed.password or not parsed.hostname:
+        raise BackendError(
+            "环境变量 Key 模式的 API 地址必须是没有账号密码的完整 URL。"
+        )
+    if parsed.query or parsed.fragment:
+        raise BackendError("环境变量 Key 模式的 API 地址不能包含 query 或 fragment。")
+
+    scheme = parsed.scheme.lower()
+    host = parsed.hostname.rstrip(".").lower()
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise BackendError("环境变量 Key 模式的 API 地址端口无效。") from exc
+
+    if scheme not in {"https", "http"}:
+        raise BackendError("环境变量 Key 模式只允许使用 HTTPS（本机服务可使用 HTTP）。")
+    if scheme == "http" and host not in {"localhost", "127.0.0.1", "::1"}:
+        raise BackendError("环境变量 Key 模式禁止向非本机 HTTP 地址发送密钥。")
+
+    allowed = _api_allowed_hosts()
+    host_match = host in allowed
+    port_match = f"{host}:{port}" in allowed if port is not None else False
+    default_port = 443 if scheme == "https" else 80
+    if not (host_match and (port is None or port == default_port)) and not port_match:
+        hint = (
+            f"如需允许其他服务商，请在启动 ComfyUI 前设置 {API_ALLOWED_HOSTS_ENV}"
+        )
+        raise BackendError(
+            f"环境变量 Key 模式拒绝未允许的 API 主机：{host}"
+            f"。默认仅允许 api.openai.com；{hint}。"
+        )
 
 
 @dataclass(frozen=True)
@@ -313,12 +393,17 @@ class OpenAICompatibleBackend:
         organization: str = "",
         headers_json: str = "",
         extra_body_json: str = "",
+        restrict_endpoint: bool = False,
     ):
         self.base_url = base_url.strip().rstrip("/")
         if self.base_url.endswith("/chat/completions"):
             self.base_url = self.base_url[: -len("/chat/completions")].rstrip("/")
-        self.api_key = api_key.strip() or os.getenv(api_key_env.strip(), "")
         self.api_key_env = api_key_env.strip()
+        if self.api_key_env and not self.api_key_env.replace("_", "a").isalnum():
+            raise BackendError("API 密钥环境变量名称无效。")
+        if restrict_endpoint:
+            _validate_env_api_endpoint(self.base_url)
+        self.api_key = api_key.strip() or os.getenv(self.api_key_env, "")
         self.model = model.strip()
         self.timeout = max(1.0, float(timeout))
         self.organization = organization.strip()

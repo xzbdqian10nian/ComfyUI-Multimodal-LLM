@@ -45,7 +45,7 @@
     "inputs": {
       "base_url": {
         "name": "base URL",
-        "tooltip": "OpenAI-compatible API base URL; do not include /chat/completions."
+        "tooltip": "OpenAI-compatible API base URL; do not include /chat/completions. Environment-key mode only permits the administrator's host allow-list."
       },
       "model": {
         "name": "model",
@@ -53,7 +53,7 @@
       },
       "api_key_env": {
         "name": "API key environment variable",
-        "tooltip": "Environment variable containing the API key, for example OPENAI_API_KEY."
+        "tooltip": "Environment variable containing the API key. Its request host must be administrator-allow-listed."
       },
       "prompt": {
         "name": "prompt",

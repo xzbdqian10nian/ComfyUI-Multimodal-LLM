@@ -482,7 +482,12 @@ class _MultimodalAPINodeBase:
                 "STRING",
                 {
                     "default": "https://api.openai.com/v1",
-                    "tooltip": "OpenAI-compatible API base URL; do not include /chat/completions.",
+                    "tooltip": (
+                        "OpenAI-compatible API base URL; do not include /chat/completions. "
+                        "Environment-key mode only permits the administrator's host allow-list."
+                        if cls.auth_mode == "env"
+                        else "OpenAI-compatible API base URL; do not include /chat/completions."
+                    ),
                 },
             ),
             "model": (
@@ -495,7 +500,7 @@ class _MultimodalAPINodeBase:
                 "STRING",
                 {
                     "default": "OPENAI_API_KEY",
-                    "tooltip": "Environment variable name containing the API key, for example OPENAI_API_KEY.",
+                    "tooltip": "Environment variable name containing the API key. Its request host must be administrator-allow-listed.",
                 },
             )
         else:
@@ -602,6 +607,7 @@ class _MultimodalAPINodeBase:
             api_key_env=api_key_env,
             model=model,
             timeout=120.0,
+            restrict_endpoint=self.auth_mode == "env",
         )
         requested_max_tokens = int(max_tokens)
         # Keep 0 intact in the request so the API applies its own default. The
