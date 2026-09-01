@@ -83,10 +83,10 @@ def _content_text(content: Any) -> str:
 def _extract_completion(result: Any) -> tuple[dict[str, Any], dict[str, Any]]:
     data = _to_plain(result)
     if not isinstance(data, dict):
-        raise BackendError(f"后端返回了无法解析的结果类型：{type(result).__name__}")
+        raise BackendError(f"The backend returned an unsupported result type: {type(result).__name__}.")
     choices = data.get("choices") or []
     if not choices:
-        raise BackendError("后端响应中没有 choices。")
+        raise BackendError("The backend response did not contain any choices.")
     choice = choices[0] if isinstance(choices[0], dict) else _to_plain(choices[0])
     message = choice.get("message") if isinstance(choice, dict) else None
     if not isinstance(message, dict):
@@ -222,11 +222,11 @@ def _parse_tools(tools_json: str | None) -> list[dict[str, Any]] | None:
     try:
         parsed = json.loads(tools_json)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"tools_json 不是有效 JSON：{exc}") from exc
+        raise ValueError(f"tools_json is not valid JSON: {exc}") from exc
     if isinstance(parsed, dict):
         return [parsed]
     if not isinstance(parsed, list):
-        raise ValueError("tools_json 必须是工具对象或工具对象数组。")
+        raise ValueError("tools_json must be a tool object or an array of tool objects.")
     return parsed
 
 
@@ -772,7 +772,7 @@ class MultimodalChat:
         unique_id: str | None = None,
     ):
         if backend is None or not callable(getattr(backend, "complete", None)):
-            raise BackendError("请连接本插件的本地模型加载器或 API Backend 节点。")
+            raise BackendError("Connect this plugin's local model loader or an API backend node.")
         total = max(1, int(max_tokens))
         progress = make_progress(total, unique_id)
         generation_log = ConsoleProgressBar("Local model generation", total)

@@ -10,6 +10,7 @@ from __future__ import annotations
 import gc
 import json
 import os
+import re
 import threading
 import time
 import urllib.error
@@ -45,7 +46,13 @@ API_ALLOWED_HOSTS_ENV = "COMFYUI_API_ALLOWED_HOSTS"
 # This is deliberately a host allow-list, not a URL prefix check.  The
 # administrator can replace this default with exact hosts through
 # COMFYUI_API_ALLOWED_HOSTS; a workflow cannot change that process setting.
-DEFAULT_API_ALLOWED_HOSTS = frozenset({"api.openai.com"})
+DEFAULT_API_ALLOWED_HOSTS = frozenset({
+    "api.openai.com",
+    "localhost",
+    "127.0.0.1",
+    "::1",
+})
+API_ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def _normalise_allowed_host(value: str) -> str | None:
@@ -86,37 +93,35 @@ def _validate_env_api_endpoint(base_url: str) -> None:
     this function because their key is supplied by the workflow itself rather
     than read from the ComfyUI server environment.
     """
-    parsed = urlsplit(base_url)
-    if parsed.username or parsed.password or not parsed.hostname:
-        raise BackendError(
-            "环境变量 Key 模式的 API 地址必须是没有账号密码的完整 URL。"
-        )
-    if parsed.query or parsed.fragment:
-        raise BackendError("环境变量 Key 模式的 API 地址不能包含 query 或 fragment。")
-
-    scheme = parsed.scheme.lower()
-    host = parsed.hostname.rstrip(".").lower()
     try:
+        parsed = urlsplit(base_url)
+        host = parsed.hostname
         port = parsed.port
     except ValueError as exc:
-        raise BackendError("环境变量 Key 模式的 API 地址端口无效。") from exc
+        raise BackendError("Environment-key API URL is invalid.") from exc
+    if parsed.username or parsed.password or not host:
+        raise BackendError("Environment-key API URL must be complete and must not contain credentials.")
+    if parsed.query or parsed.fragment:
+        raise BackendError("Environment-key API URL must not contain a query or fragment.")
+
+    scheme = parsed.scheme.lower()
+    host = host.rstrip(".").lower()
 
     if scheme not in {"https", "http"}:
-        raise BackendError("环境变量 Key 模式只允许使用 HTTPS（本机服务可使用 HTTP）。")
-    if scheme == "http" and host not in {"localhost", "127.0.0.1", "::1"}:
-        raise BackendError("环境变量 Key 模式禁止向非本机 HTTP 地址发送密钥。")
+        raise BackendError("Environment-key mode only allows HTTPS; HTTP is allowed for loopback services.")
+    is_loopback = host in {"localhost", "127.0.0.1", "::1"}
+    if scheme == "http" and not is_loopback:
+        raise BackendError("Environment-key mode will not send a key to a non-loopback HTTP address.")
 
     allowed = _api_allowed_hosts()
     host_match = host in allowed
     port_match = f"{host}:{port}" in allowed if port is not None else False
     default_port = 443 if scheme == "https" else 80
-    if not (host_match and (port is None or port == default_port)) and not port_match:
-        hint = (
-            f"如需允许其他服务商，请在启动 ComfyUI 前设置 {API_ALLOWED_HOSTS_ENV}"
-        )
+    host_port_match = host_match and (port is None or port == default_port or is_loopback)
+    if not host_port_match and not port_match:
         raise BackendError(
-            f"环境变量 Key 模式拒绝未允许的 API 主机：{host}"
-            f"。默认仅允许 api.openai.com；{hint}。"
+            f"Environment-key mode rejected the unallowlisted API host: {host}. "
+            f"The default is api.openai.com; set {API_ALLOWED_HOSTS_ENV} before starting ComfyUI to allow exact additional hosts."
         )
 
 
@@ -184,7 +189,7 @@ class LocalQwen38Backend:
             from llama_cpp.llama_chat_format import Jinja2ChatFormatter, Qwen35ChatHandler
         except Exception as exc:
             raise BackendError(
-                "当前 llama-cpp-python 不包含 Qwen35ChatHandler，无法加载视觉模型。"
+                "The installed llama-cpp-python does not provide Qwen35ChatHandler; the local vision model cannot be loaded."
             ) from exc
 
         handler = Qwen35ChatHandler(
@@ -226,7 +231,7 @@ class LocalQwen38Backend:
                 from llama_cpp import Llama
             except Exception as exc:
                 raise BackendError(
-                    "未安装视觉版 llama-cpp-python；请使用当前镜像中已有的 CUDA wheel。"
+                    "A CUDA-enabled llama-cpp-python build is not installed; install a wheel matching the existing ComfyUI runtime."
                 ) from exc
 
             started = time.perf_counter()
@@ -367,9 +372,9 @@ def _parse_json_object(value: str, field_name: str) -> dict[str, Any]:
     try:
         parsed = json.loads(value)
     except json.JSONDecodeError as exc:
-        raise BackendError(f"{field_name} 不是有效 JSON：{exc}") from exc
+        raise BackendError(f"{field_name} is not valid JSON: {exc}") from exc
     if not isinstance(parsed, dict):
-        raise BackendError(f"{field_name} 必须是 JSON 对象。")
+        raise BackendError(f"{field_name} must be a JSON object.")
     return parsed
 
 
@@ -399,8 +404,8 @@ class OpenAICompatibleBackend:
         if self.base_url.endswith("/chat/completions"):
             self.base_url = self.base_url[: -len("/chat/completions")].rstrip("/")
         self.api_key_env = api_key_env.strip()
-        if self.api_key_env and not self.api_key_env.replace("_", "a").isalnum():
-            raise BackendError("API 密钥环境变量名称无效。")
+        if self.api_key_env and not API_ENV_NAME_RE.fullmatch(self.api_key_env):
+            raise BackendError("API key environment-variable name is invalid.")
         if restrict_endpoint:
             _validate_env_api_endpoint(self.base_url)
         self.api_key = api_key.strip() or os.getenv(self.api_key_env, "")
@@ -413,9 +418,9 @@ class OpenAICompatibleBackend:
         self._lock = threading.RLock()
 
         if not self.base_url:
-            raise BackendError("API base URL 不能为空。")
+            raise BackendError("API base URL cannot be empty.")
         if not self.model:
-            raise BackendError("API model 不能为空。")
+            raise BackendError("API model cannot be empty.")
 
     def _ensure_client(self):
         if self.client is not None:
@@ -424,7 +429,7 @@ class OpenAICompatibleBackend:
             from openai import OpenAI
         except Exception as exc:
             raise BackendError(
-                "当前环境没有 openai 包；请安装 OpenAI-compatible API 所需的 SDK，或使用镜像中的标准库回退。"
+                "The openai package is unavailable; install it for OpenAI-compatible API support or use the built-in standard-library fallback."
             ) from exc
 
         # Some local OpenAI-compatible servers do not require a key.  The SDK
@@ -481,7 +486,7 @@ class OpenAICompatibleBackend:
             try:
                 client = self._ensure_client()
             except BackendError as exc:
-                if "没有 openai 包" not in str(exc):
+                if "openai package is unavailable" not in str(exc):
                     raise
                 # The stdlib fallback deliberately stays non-streaming: a
                 # correct JSON response is preferable to a partial SSE parser
@@ -493,7 +498,7 @@ class OpenAICompatibleBackend:
                 return client.chat.completions.create(**request)
             except Exception as exc:
                 # Do not include the API key in the error text.
-                raise BackendError(f"OpenAI-compatible API 请求失败：{exc}") from exc
+                raise BackendError(f"OpenAI-compatible API request failed: {exc}") from exc
 
     def _complete_with_urllib(self, request: dict[str, Any], extra_body: dict[str, Any]):
         """Small stdlib fallback for images where the OpenAI SDK is absent."""
@@ -517,9 +522,9 @@ class OpenAICompatibleBackend:
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")[:1000]
-            raise BackendError(f"OpenAI-compatible API 返回 HTTP {exc.code}: {detail}") from exc
+            raise BackendError(f"OpenAI-compatible API returned HTTP {exc.code}: {detail}") from exc
         except Exception as exc:
-            raise BackendError(f"OpenAI-compatible API 请求失败：{exc}") from exc
+            raise BackendError(f"OpenAI-compatible API request failed: {exc}") from exc
 
     def info(self) -> str:
         key_source = "direct" if self.api_key else (self.api_key_env or "none")
