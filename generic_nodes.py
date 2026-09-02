@@ -514,6 +514,14 @@ class _MultimodalAPINodeBase:
             )
         required.update(
             {
+                "system_prompt": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "multiline": True,
+                        "tooltip": "Optional system/persona instruction; leave blank for the provider default.",
+                    },
+                ),
                 "prompt": (
                     "STRING",
                     {
@@ -557,14 +565,6 @@ class _MultimodalAPINodeBase:
         return {
             "required": required,
             "optional": {
-                "system_prompt": (
-                    "STRING",
-                    {
-                        "default": "",
-                        "multiline": True,
-                        "tooltip": "Optional system instruction; leave blank for the provider default.",
-                    },
-                ),
                 "max_video_frames": (
                     "INT",
                     {
@@ -620,13 +620,13 @@ class _MultimodalAPINodeBase:
         self,
         base_url: str,
         model: str,
+        system_prompt: str,
         prompt: str,
         max_tokens: int,
         temperature: float,
         seed: int = 1,
         api_key_env: str = "",
         api_key: str = "",
-        system_prompt: str = "",
         image: torch.Tensor | None = None,
         max_video_frames: int = 8,
         video_transport: str = "frames",
@@ -720,13 +720,13 @@ class MultimodalChat:
         return {
             "required": {
                 "backend": ("MLLM_BACKEND", {"tooltip": "Connect the Qwen3.8 VL local loader or any OpenAI-compatible API backend."}),
-                "prompt": (
-                    "STRING",
-                    {"default": "Please describe the input image or video in detail.", "multiline": True, "tooltip": "User instruction sent with the attached image/video content."},
-                ),
                 "system_prompt": (
                     "STRING",
                     {"default": "You are a professional visual-understanding assistant running in ComfyUI. Answer accurately and directly.", "multiline": True, "tooltip": "System-level behavior and response-format instruction."},
+                ),
+                "prompt": (
+                    "STRING",
+                    {"default": "Please describe the input image or video in detail.", "multiline": True, "tooltip": "User instruction sent with the attached image/video content."},
                 ),
                 "thinking_mode": (["backend_default", "thinking", "instruct"], {"default": "backend_default", "tooltip": "Use backend setting, force reasoning mode, or force direct instruct mode."}),
                 "context_length": (
@@ -784,8 +784,8 @@ class MultimodalChat:
     def generate(
         self,
         backend: Any,
-        prompt: str,
         system_prompt: str,
+        prompt: str,
         thinking_mode: str,
         context_length: int,
         max_tokens: int,

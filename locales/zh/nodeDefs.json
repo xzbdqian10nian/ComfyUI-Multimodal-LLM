@@ -55,6 +55,10 @@
         "name": "密钥环境变量",
         "tooltip": "保存 API 密钥的环境变量名称；请求主机必须在管理员允许列表中。"
       },
+      "system_prompt": {
+        "name": "系统提示词",
+        "tooltip": "可选的系统级指令；留空使用服务商默认行为。"
+      },
       "prompt": {
         "name": "提示词",
         "tooltip": "发送给 API 的文字指令，可同时附带图片或视频。"
@@ -71,14 +75,6 @@
         "name": "随机种子",
         "tooltip": "随机种子。服务商支持 seed 时，可用于尽量复现采样结果。"
       },
-      "system_prompt": {
-        "name": "系统提示词",
-        "tooltip": "可选的系统级指令；留空使用服务商默认行为。"
-      },
-      "image": {
-        "name": "可选图片或批次",
-        "tooltip": "单张图片或 IMAGE 批次；每张图都会在同一个 API 请求中发送。"
-      },
       "max_video_frames": {
         "name": "最多视频帧数",
         "tooltip": "VIDEO 按视频帧发送时，均匀抽取的最大帧数。"
@@ -86,6 +82,10 @@
       "video_transport": {
         "name": "视频传输方式",
         "tooltip": "选择抽帧、原生 video_url，或自动尝试原生视频。"
+      },
+      "image": {
+        "name": "可选图片或批次",
+        "tooltip": "单张图片或 IMAGE 批次；每张图都会在同一个 API 请求中发送。"
       },
       "video_frames": {
         "name": "视频帧",
@@ -123,6 +123,14 @@
         "name": "模型名称",
         "tooltip": "API 服务商实际提供的模型 ID。"
       },
+      "api_key": {
+        "name": "API 密钥",
+        "tooltip": "本次请求使用的 API 密钥，不读取环境变量。"
+      },
+      "system_prompt": {
+        "name": "系统提示词",
+        "tooltip": "可选的系统级指令；留空使用服务商默认行为。"
+      },
       "prompt": {
         "name": "提示词",
         "tooltip": "发送给 API 的文字指令，可同时附带图片或视频。"
@@ -139,18 +147,6 @@
         "name": "随机种子",
         "tooltip": "随机种子。服务商支持 seed 时，可用于尽量复现采样结果。"
       },
-      "system_prompt": {
-        "name": "系统提示词",
-        "tooltip": "可选的系统级指令；留空使用服务商默认行为。"
-      },
-      "image": {
-        "name": "可选图片或批次",
-        "tooltip": "单张图片或 IMAGE 批次；每张图都会在同一个 API 请求中发送。"
-      },
-      "api_key": {
-        "name": "API 密钥",
-        "tooltip": "本次请求使用的 API 密钥，不读取环境变量。"
-      },
       "max_video_frames": {
         "name": "最多视频帧数",
         "tooltip": "VIDEO 按视频帧发送时，均匀抽取的最大帧数。"
@@ -158,6 +154,10 @@
       "video_transport": {
         "name": "视频传输方式",
         "tooltip": "选择抽帧、原生 video_url，或自动尝试原生视频。"
+      },
+      "image": {
+        "name": "可选图片或批次",
+        "tooltip": "单张图片或 IMAGE 批次；每张图都会在同一个 API 请求中发送。"
       },
       "video_frames": {
         "name": "视频帧",
@@ -191,13 +191,13 @@
         "name": "后端",
         "tooltip": "连接 Qwen3.8 VL 本地加载器或任意 OpenAI 兼容 API 后端。"
       },
-      "prompt": {
-        "name": "提示词",
-        "tooltip": "与图片或视频内容一起发送给模型的用户指令。"
-      },
       "system_prompt": {
         "name": "系统提示词",
         "tooltip": "控制模型角色、回答方式和输出格式的系统级指令。"
+      },
+      "prompt": {
+        "name": "提示词",
+        "tooltip": "与图片或视频内容一起发送给模型的用户指令。"
       },
       "thinking_mode": {
         "name": "思考模式",

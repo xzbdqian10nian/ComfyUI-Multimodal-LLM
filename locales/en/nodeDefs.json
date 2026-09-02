@@ -55,6 +55,10 @@
         "name": "API key environment variable",
         "tooltip": "Environment variable containing the API key. Its request host must be administrator-allow-listed."
       },
+      "system_prompt": {
+        "name": "system prompt",
+        "tooltip": "Optional system instruction; leave blank for provider defaults."
+      },
       "prompt": {
         "name": "prompt",
         "tooltip": "Text instruction sent to the API, together with any attached image or video input."
@@ -71,14 +75,6 @@
         "name": "seed",
         "tooltip": "Random seed. Providers that support seed can use it for repeatable sampling."
       },
-      "system_prompt": {
-        "name": "system prompt",
-        "tooltip": "Optional system instruction; leave blank for provider defaults."
-      },
-      "image": {
-        "name": "optional image or batch",
-        "tooltip": "One still image or an IMAGE batch; every item is sent in the same API request."
-      },
       "max_video_frames": {
         "name": "max video frames",
         "tooltip": "Maximum evenly sampled frames used when VIDEO is sent as frames."
@@ -86,6 +82,10 @@
       "video_transport": {
         "name": "video transport",
         "tooltip": "Choose sampled image frames, native video_url, or automatic native-video fallback."
+      },
+      "image": {
+        "name": "optional image or batch",
+        "tooltip": "One still image or an IMAGE batch; every item is sent in the same API request."
       },
       "video_frames": {
         "name": "video frames",
@@ -123,6 +123,14 @@
         "name": "model",
         "tooltip": "Exact model ID exposed by the API provider."
       },
+      "api_key": {
+        "name": "API key",
+        "tooltip": "API key used for this request; environment variables are not read."
+      },
+      "system_prompt": {
+        "name": "system prompt",
+        "tooltip": "Optional system instruction; leave blank for provider defaults."
+      },
       "prompt": {
         "name": "prompt",
         "tooltip": "Text instruction sent to the API, together with any attached image or video input."
@@ -139,18 +147,6 @@
         "name": "seed",
         "tooltip": "Random seed. Providers that support seed can use it for repeatable sampling."
       },
-      "system_prompt": {
-        "name": "system prompt",
-        "tooltip": "Optional system instruction; leave blank for provider defaults."
-      },
-      "image": {
-        "name": "optional image or batch",
-        "tooltip": "One still image or an IMAGE batch; every item is sent in the same API request."
-      },
-      "api_key": {
-        "name": "API key",
-        "tooltip": "API key used for this request; environment variables are not read."
-      },
       "max_video_frames": {
         "name": "max video frames",
         "tooltip": "Maximum evenly sampled frames used when VIDEO is sent as frames."
@@ -158,6 +154,10 @@
       "video_transport": {
         "name": "video transport",
         "tooltip": "Choose sampled image frames, native video_url, or automatic native-video fallback."
+      },
+      "image": {
+        "name": "optional image or batch",
+        "tooltip": "One still image or an IMAGE batch; every item is sent in the same API request."
       },
       "video_frames": {
         "name": "video frames",
@@ -191,13 +191,13 @@
         "name": "backend",
         "tooltip": "Connect the Qwen3.8 VL local loader or any OpenAI-compatible API backend."
       },
-      "prompt": {
-        "name": "prompt",
-        "tooltip": "User instruction sent with the attached image/video content."
-      },
       "system_prompt": {
         "name": "system prompt",
         "tooltip": "System-level behavior and response-format instruction."
+      },
+      "prompt": {
+        "name": "prompt",
+        "tooltip": "User instruction sent with the attached image/video content."
       },
       "thinking_mode": {
         "name": "thinking mode",

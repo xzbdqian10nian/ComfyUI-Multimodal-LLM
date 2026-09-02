@@ -311,18 +311,18 @@
           "link": 1
         },
         {
-          "name": "prompt",
-          "type": "STRING",
-          "widget": {
-            "name": "prompt"
-          },
-          "link": null
-        },
-        {
           "name": "system_prompt",
           "type": "STRING",
           "widget": {
             "name": "system_prompt"
+          },
+          "link": null
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
           },
           "link": null
         },
@@ -333,6 +333,14 @@
             "name": "thinking_mode"
           },
           "link": null
+        },
+        {
+          "name": "context_length",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "context_length"
+          }
         },
         {
           "name": "max_tokens",
@@ -387,22 +395,6 @@
           "type": "INT",
           "widget": {
             "name": "seed"
-          },
-          "link": null
-        },
-        {
-          "name": "max_image_edge",
-          "type": "INT",
-          "widget": {
-            "name": "max_image_edge"
-          },
-          "link": null
-        },
-        {
-          "name": "max_image_frames",
-          "type": "INT",
-          "widget": {
-            "name": "max_image_frames"
           },
           "link": null
         },
@@ -485,11 +477,12 @@
       "title": "Vision LLM Chat",
       "properties": {
         "Node name for S&R": "MultimodalChat",
-        "cnr_id": "qwen38-vl"
+        "cnr_id": "qwen38-vl",
+        "qwen38_vl_prompt_order": "system_first"
       },
       "widgets_values": [
-        "请分别描述两张图片，并比较人物、场景和画面风格。",
         "你是运行在 ComfyUI 中的专业多模态助手。请准确、直接地回答。",
+        "请分别描述两张图片，并比较人物、场景和画面风格。",
         "backend_default",
         8192,
         4096,
@@ -599,7 +592,7 @@
       5,
       0,
       2,
-      16,
+      15,
       "IMAGE"
     ],
     [
