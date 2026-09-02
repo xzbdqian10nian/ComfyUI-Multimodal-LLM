@@ -1,4 +1,4 @@
-"""Model discovery helpers for the ComfyUI Multimodal LLM nodes.
+"""Model discovery helpers for the ComfyUI Qwen3.8 VL nodes.
 
 The visible ComfyUI nodes live in :mod:`generic_nodes`. This module only
 handles model catalogues and safe path resolution; it does not register a

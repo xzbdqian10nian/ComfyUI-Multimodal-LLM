@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README_zh-CN.md)
 
-A ComfyUI custom-node pack for local Qwen3.8 VL inference through GGUF/`llama.cpp`, plus simple OpenAI-compatible multimodal API backends. The local and API backends share one chat node, so the same text, image, and video workflow can be switched between backends.
+A ComfyUI custom-node pack for local Qwen3.8 VL inference through GGUF/`llama.cpp`, plus simple OpenAI-compatible image/video API backends. The local and API backends share one chat node, so the same text, image, and video workflow can be switched between backends.
 
 > This is an independent community project. Qwen3.8 model weights are not included.
 
@@ -34,7 +34,7 @@ The loader uses ComfyUI's configured model directory, so the same node pack work
 git -C ComfyUI-Qwen3.8-VL pull --ff-only
 ```
 
-Restart ComfyUI after updating. If the plugin was installed under an older local folder name, run the command from that folder instead.
+Restart ComfyUI after updating.
 
 ## Nodes
 
@@ -46,7 +46,7 @@ Restart ComfyUI after updating. If the plugin was installed under an older local
 | `Vision LLM Chat` | Sends text, images, image batches, video frames, or ComfyUI `VIDEO` to the selected backend. |
 | `Backend Unload` | Explicitly releases a local model or closes an API backend. |
 
-The node classes keep stable internal types for workflow compatibility; the visible names are short and backend-neutral.
+The node names are backend-neutral: the local loader is Qwen3.8-specific, while the API nodes can call any compatible vision endpoint.
 
 ## Local Qwen3.8 VL model
 

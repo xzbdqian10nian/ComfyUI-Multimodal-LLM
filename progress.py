@@ -63,7 +63,7 @@ def send_status(
     if mirror_log:
         node_suffix = f" node={node_id}" if node_id is not None else ""
         channel = "ui+log" if delivered_to_ui else "log"
-        print(f"[ComfyUI-Multimodal-LLM][{channel}]{node_suffix} {message}", flush=True)
+        print(f"[ComfyUI-Qwen3.8-VL][{channel}]{node_suffix} {message}", flush=True)
 
 
 def update_progress(progress, value: int, total: int | None = None) -> None:
@@ -138,7 +138,7 @@ class ConsoleProgressBar:
         bar = "█" * filled + "░" * (self.width - filled)
         detail = f" · {suffix}" if suffix else ""
         print(
-            f"[ComfyUI-Multimodal-LLM] {self.label}: "
+            f"[ComfyUI-Qwen3.8-VL] {self.label}: "
             f"{ratio * 100:5.1f}%|{bar}| {value}/{self.total}{detail}",
             end="\n" if complete else "\r",
             flush=True,

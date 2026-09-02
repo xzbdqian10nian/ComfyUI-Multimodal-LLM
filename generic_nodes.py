@@ -1,4 +1,4 @@
-"""Visible ComfyUI nodes for local and API multimodal LLM backends."""
+"""Visible ComfyUI nodes for local and API vision LLM backends."""
 
 from __future__ import annotations
 
@@ -312,7 +312,7 @@ def _run_chat(
         video_transport,
         is_api,
     )
-    # Some multimodal chat templates (including Qwen3.8's MTMD template)
+    # Some image/video chat templates (including Qwen3.8's MTMD template)
     # insert their own default system message when none is supplied.  Passing
     # an empty system message leaves it in second position after that default
     # and the template rejects the prompt with "System message must be at the
@@ -365,12 +365,12 @@ def _run_chat(
     return response, reasoning, raw, stats
 
 
-class MultimodalQwen38Loader:
+class Qwen38VLLoader:
     """Load the configured local Qwen3.8 GGUF backend."""
-    RETURN_TYPES = ("MLLM_BACKEND", "STRING")
+    RETURN_TYPES = ("VISION_LLM_BACKEND", "STRING")
     RETURN_NAMES = ("backend", "backend_info")
     OUTPUT_TOOLTIPS = (
-        "Loaded local multimodal model backend for the Vision LLM Chat node.",
+        "Loaded local Qwen3.8 VL backend for the Vision LLM Chat node.",
         "Resolved model, projector, GPU layers, and backend state.",
     )
     CATEGORY = "Vision LLM/Backends"
@@ -385,14 +385,14 @@ class MultimodalQwen38Loader:
                     cls._model_choices(),
                     {
                         "default": cls._model_choices()[0],
-                        "tooltip": "Main Qwen3.8 GGUF model file. Q4_K_M is the current 32 GB VRAM baseline.",
+                        "tooltip": "Main Qwen3.8 GGUF model file. Q4_K_M is a practical starting point for 32 GB VRAM.",
                     },
                 ),
                 "mmproj_file": (
                     cls._mmproj_choices(),
                     {
                         "default": cls._mmproj_choices()[0],
-                        "tooltip": "Multimodal projector GGUF required for image and video-frame understanding.",
+                        "tooltip": "Vision projector GGUF required to understand images and video frames.",
                     },
                 ),
                 "batch_size": (
@@ -402,7 +402,7 @@ class MultimodalQwen38Loader:
                         "min": 128,
                         "max": 8192,
                         "step": 128,
-                        "tooltip": "Prompt-processing batch size. Higher can be faster but uses more VRAM.",
+                        "tooltip": "Number of prompt tokens processed in one llama.cpp batch. Higher can improve prompt processing speed but uses more VRAM.",
                     },
                 ),
                 "micro_batch_size": (
@@ -412,7 +412,7 @@ class MultimodalQwen38Loader:
                         "min": 64,
                         "max": 2048,
                         "step": 64,
-                        "tooltip": "Physical llama.cpp micro-batch size. Reduce this first if prompt processing runs out of VRAM.",
+                        "tooltip": "Maximum tokens processed in one physical llama.cpp sub-batch. Reduce this first if prompt processing runs out of VRAM.",
                     },
                 ),
                 "gpu_layers": (
@@ -421,14 +421,14 @@ class MultimodalQwen38Loader:
                         "default": -1,
                         "min": -1,
                         "max": 256,
-                        "tooltip": "Layers offloaded to GPU. -1 offloads all layers; lower it when partial GPU offload is needed.",
+                        "tooltip": "Number of transformer layers offloaded to the GPU. -1 offloads all layers; lower it for partial GPU offload.",
                     },
                 ),
                 "free_comfy_vram": (
                     "BOOLEAN",
                     {
                         "default": True,
-                        "tooltip": "Unload ComfyUI diffusion models before loading this large local VLM.",
+                        "tooltip": "Unload ComfyUI diffusion models before loading this large local vision-language model.",
                     },
                 ),
             },
@@ -470,7 +470,7 @@ class MultimodalQwen38Loader:
         return backend, backend.info()
 
 
-class _MultimodalAPINodeBase:
+class _VisionAPINodeBase:
     """Shared implementation for the two deliberately simple API nodes."""
 
     auth_mode = "env"
@@ -484,7 +484,7 @@ class _MultimodalAPINodeBase:
                     "default": "https://api.openai.com/v1",
                     "tooltip": (
                         "OpenAI-compatible API base URL; do not include /chat/completions. "
-                        "Environment-key mode only permits the administrator's host allow-list."
+                        "The environment-key node only permits the administrator's host allow-list."
                         if cls.auth_mode == "env"
                         else "OpenAI-compatible API base URL; do not include /chat/completions."
                     ),
@@ -514,20 +514,20 @@ class _MultimodalAPINodeBase:
             )
         required.update(
             {
-                "system_prompt": (
-                    "STRING",
-                    {
-                        "default": "",
-                        "multiline": True,
-                        "tooltip": "Optional system/persona instruction; leave blank for the provider default.",
-                    },
-                ),
                 "prompt": (
                     "STRING",
                     {
                         "default": "",
                         "multiline": True,
-                        "tooltip": "Text instruction sent to the API, together with any attached image or video input.",
+                        "tooltip": "User instruction sent to the API, together with any attached image or video input.",
+                    },
+                ),
+                "system_prompt": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "multiline": True,
+                        "tooltip": "Optional persona and system-level instruction; leave blank for the provider default.",
                     },
                 ),
                 "max_tokens": (
@@ -537,7 +537,7 @@ class _MultimodalAPINodeBase:
                         "min": 0,
                         "max": 32768,
                         "step": 16,
-                        "tooltip": "Maximum output tokens. 0 means do not send this parameter; use the provider default.",
+                        "tooltip": "Maximum output token count. 0 omits this parameter and uses the provider default.",
                     },
                 ),
                 "temperature": (
@@ -557,7 +557,7 @@ class _MultimodalAPINodeBase:
                         "min": 0,
                         "max": 2**32 - 1,
                         "control_after_generate": True,
-                        "tooltip": "Random seed. Providers that support seed can use it for repeatable sampling.",
+                        "tooltip": "Seed sent for sampling when the provider supports it; providers may ignore it.",
                     },
                 ),
             }
@@ -572,32 +572,32 @@ class _MultimodalAPINodeBase:
                         "min": 1,
                         "max": 64,
                         "step": 1,
-                        "tooltip": "Maximum number of evenly sampled frames used when VIDEO is sent as frames.",
+                        "tooltip": "Maximum number of evenly sampled frames used when a VIDEO input is converted to frames. It does not limit an IMAGE batch.",
                     },
                 ),
                 "video_transport": (
                     ["frames", "video_url", "auto"],
                     {
                         "default": "frames",
-                        "tooltip": "VIDEO transport: sampled image frames, native video_url, or automatic native-video fallback behavior.",
+                        "tooltip": "Choose sampled image frames, native video_url, or automatic native-video fallback. The provider must support the selected format.",
                     },
                 ),
                 "image": (
                     "IMAGE",
                     {
-                        "tooltip": "Optional still image input. Connect one image or an IMAGE batch; each item is sent in the same API request.",
+                        "tooltip": "One still image or an IMAGE batch; every item is sent in the same API request.",
                     },
                 ),
                 "video_frames": (
                     "IMAGE",
                     {
-                        "tooltip": "Optional video-frame input as an IMAGE batch. Frames are sampled according to max_video_frames.",
+                        "tooltip": "Decoded video as an IMAGE batch; frames are sampled according to max_video_frames.",
                     },
                 ),
                 "video": (
                     "VIDEO",
                     {
-                        "tooltip": "Optional ComfyUI VIDEO input. Choose frames for broad compatibility or video_url for providers that support native video.",
+                        "tooltip": "ComfyUI VIDEO input; use frames for broad support or video_url only when the provider supports native video.",
                     },
                 ),
             },
@@ -620,8 +620,8 @@ class _MultimodalAPINodeBase:
         self,
         base_url: str,
         model: str,
-        system_prompt: str,
         prompt: str,
+        system_prompt: str,
         max_tokens: int,
         temperature: float,
         seed: int = 1,
@@ -706,29 +706,29 @@ class _MultimodalAPINodeBase:
             backend.unload()
 
 
-class MultimodalAPIEnv(_MultimodalAPINodeBase):
+class VisionAPIEnv(_VisionAPINodeBase):
     auth_mode = "env"
 
 
-class MultimodalAPIDirect(_MultimodalAPINodeBase):
+class VisionAPIDirect(_VisionAPINodeBase):
     auth_mode = "direct"
 
 
-class MultimodalChat:
+class VisionChat:
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "backend": ("MLLM_BACKEND", {"tooltip": "Connect the Qwen3.8 VL local loader or any OpenAI-compatible API backend."}),
-                "system_prompt": (
-                    "STRING",
-                    {"default": "You are a professional visual-understanding assistant running in ComfyUI. Answer accurately and directly.", "multiline": True, "tooltip": "System-level behavior and response-format instruction."},
-                ),
+                "backend": ("VISION_LLM_BACKEND", {"tooltip": "Connect the Qwen3.8 VL local loader or any OpenAI-compatible API backend."}),
                 "prompt": (
                     "STRING",
                     {"default": "Please describe the input image or video in detail.", "multiline": True, "tooltip": "User instruction sent with the attached image/video content."},
                 ),
-                "thinking_mode": (["backend_default", "thinking", "instruct"], {"default": "backend_default", "tooltip": "Use backend setting, force reasoning mode, or force direct instruct mode."}),
+                "system_prompt": (
+                    "STRING",
+                    {"default": "You are a professional visual-understanding assistant running in ComfyUI. Answer accurately and directly.", "multiline": True, "tooltip": "Persona and system-level behavior or response-format instruction."},
+                ),
+                "thinking_mode": (["backend_default", "thinking", "instruct"], {"default": "backend_default", "tooltip": "Use the backend default, force reasoning output, or force direct instruct mode. Local Qwen3.8 defaults to direct instruct mode."}),
                 "context_length": (
                     "INT",
                     {
@@ -736,15 +736,15 @@ class MultimodalChat:
                         "min": 2048,
                         "max": 262144,
                         "step": 1024,
-                        "tooltip": "Local llama.cpp context window for prompt, media tokens, and response. Changing it reloads the local model.",
+                        "tooltip": "Local llama.cpp context window for the prompt, media tokens, and response. API backends ignore it; changing it reloads a loaded local model.",
                     },
                 ),
-                "max_tokens": ("INT", {"default": 4096, "min": 16, "max": 32768, "step": 16, "tooltip": "Maximum number of new text tokens to generate. Generation still stops normally when the model finishes its answer."}),
-                "temperature": ("FLOAT", {"default": 0.6, "min": 0.0, "max": 2.0, "step": 0.05, "tooltip": "Sampling randomness. Lower values are steadier; higher values are more varied."}),
-                "top_p": ("FLOAT", {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Nucleus sampling threshold. 0.95 is a strong general default."}),
-                "top_k": ("INT", {"default": 40, "min": 0, "max": 200, "tooltip": "Restrict each token choice to the top K candidates. 0 disables it when supported."}),
-                "min_p": ("FLOAT", {"default": 0.05, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Discard tokens whose probability is too small relative to the best token."}),
-                "repeat_penalty": ("FLOAT", {"default": 1.05, "min": 0.5, "max": 2.0, "step": 0.01, "tooltip": "Penalizes repeated text. 1.0 disables the penalty."}),
+                "max_tokens": ("INT", {"default": 4096, "min": 16, "max": 32768, "step": 16, "tooltip": "Maximum number of new text tokens to generate. This is only a limit; generation still stops when the model finishes its answer."}),
+                "temperature": ("FLOAT", {"default": 0.6, "min": 0.0, "max": 2.0, "step": 0.05, "tooltip": "Sampling randomness. Lower values are steadier; higher values are more varied. With a local model, 0 uses deterministic greedy sampling when supported."}),
+                "top_p": ("FLOAT", {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Nucleus-sampling probability threshold. Lower values keep only more likely tokens; 0.95 is a strong general default."}),
+                "top_k": ("INT", {"default": 40, "min": 0, "max": 200, "tooltip": "For local llama.cpp, restrict each token choice to the top K candidates. 0 disables top-K filtering; API backends ignore it."}),
+                "min_p": ("FLOAT", {"default": 0.05, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "For local llama.cpp, discard tokens whose probability is below this fraction of the best token's probability. API backends ignore it."}),
+                "repeat_penalty": ("FLOAT", {"default": 1.05, "min": 0.5, "max": 2.0, "step": 0.01, "tooltip": "For local llama.cpp, penalize repeated text. 1.0 disables the penalty; API backends ignore it."}),
                 "seed": (
                     "INT",
                     {
@@ -752,17 +752,17 @@ class MultimodalChat:
                         "min": 0,
                         "max": 2**32 - 1,
                         "control_after_generate": True,
-                        "tooltip": "Random seed used for reproducible sampling when all other inputs match.",
+                        "tooltip": "Random seed used for reproducible sampling when all other inputs and backend settings match. API providers may ignore it.",
                     },
                 ),
-                "max_video_frames": ("INT", {"default": 8, "min": 1, "max": 64, "tooltip": "Maximum number of evenly sampled video frames sent to the model."}),
-                "video_transport": (["auto", "frames", "video_url"], {"default": "auto", "tooltip": "API video mode: native data URL when supported, or sampled frames. Local models always use frames."}),
+                "max_video_frames": ("INT", {"default": 8, "min": 1, "max": 64, "tooltip": "Maximum number of evenly sampled frames used when a VIDEO input is converted to frames. It does not limit an IMAGE batch."}),
+                "video_transport": (["auto", "frames", "video_url"], {"default": "auto", "tooltip": "For API backends, choose automatic native-video when available, sampled image frames, or native video_url. Local models always use frames."}),
                 "unload_after": ("BOOLEAN", {"default": False, "tooltip": "Release this backend after generation. Enable to recover VRAM, disable for faster repeated chats."}),
             },
             "optional": {
-                "image": ("IMAGE", {"tooltip": "One image or an IMAGE batch of still images."}),
-                "video_frames": ("IMAGE", {"tooltip": "Decoded video frames as a ComfyUI IMAGE batch."}),
-                "video": ("VIDEO", {"tooltip": "ComfyUI VIDEO object; locally it is sampled into frames."}),
+                "image": ("IMAGE", {"tooltip": "One still image or an IMAGE batch of still images."}),
+                "video_frames": ("IMAGE", {"tooltip": "Decoded video frames as a ComfyUI IMAGE batch; the batch is sampled according to max video frames."}),
+                "video": ("VIDEO", {"tooltip": "ComfyUI VIDEO object; local models sample it into frames, while API transport follows video transport."}),
                 "tools_json": ("STRING", {"default": "", "multiline": True, "tooltip": "Optional OpenAI function/tool schema as one JSON object or an array."}),
             },
             "hidden": {"unique_id": "UNIQUE_ID"},
@@ -784,8 +784,8 @@ class MultimodalChat:
     def generate(
         self,
         backend: Any,
-        system_prompt: str,
         prompt: str,
+        system_prompt: str,
         thinking_mode: str,
         context_length: int,
         max_tokens: int,
@@ -811,7 +811,7 @@ class MultimodalChat:
         generation_log = ConsoleProgressBar("Local model generation", total)
         ticker = StatusTicker(unique_id)
         update_progress(progress, 0, total)
-        ticker.send(f"Preparing multimodal input… (max_tokens={total})", force=True)
+        ticker.send(f"Preparing image/video input… (max_tokens={total})", force=True)
 
         configure_chat = getattr(backend, "configure_chat", None)
         if callable(configure_chat):
@@ -886,7 +886,7 @@ class MultimodalChat:
             update_progress(progress, total, total)
             generation_log.finish(stats.splitlines()[0])
             ticker.send(f"Generation complete · {stats.splitlines()[0]}", force=True)
-            print(f"[ComfyUI-Multimodal-LLM] Generation finished: {stats.splitlines()[0]}")
+            print(f"[ComfyUI-Qwen3.8-VL] Generation finished: {stats.splitlines()[0]}")
             return {
                 "ui": {"text": (response,)},
                 "result": (response, reasoning, raw, stats),
@@ -897,10 +897,10 @@ class MultimodalChat:
                 backend.unload()
 
 
-class MultimodalUnload:
+class VisionUnload:
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"backend": ("MLLM_BACKEND", {"tooltip": "Backend instance to unload or close."})}}
+        return {"required": {"backend": ("VISION_LLM_BACKEND", {"tooltip": "Backend instance to unload or close."})}}
 
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("status",)
@@ -918,17 +918,17 @@ class MultimodalUnload:
 
 
 NODE_CLASS_MAPPINGS = {
-    "MultimodalQwen38Loader": MultimodalQwen38Loader,
-    "MultimodalAPIEnv": MultimodalAPIEnv,
-    "MultimodalAPIDirect": MultimodalAPIDirect,
-    "MultimodalChat": MultimodalChat,
-    "MultimodalUnload": MultimodalUnload,
+    "Qwen38VLLoader": Qwen38VLLoader,
+    "VisionAPIEnv": VisionAPIEnv,
+    "VisionAPIDirect": VisionAPIDirect,
+    "VisionChat": VisionChat,
+    "VisionUnload": VisionUnload,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "MultimodalQwen38Loader": "Qwen3.8 VL Local Loader",
-    "MultimodalAPIEnv": "OpenAI-Compatible API · Environment Variable",
-    "MultimodalAPIDirect": "OpenAI-Compatible API · Direct Key",
-    "MultimodalChat": "Vision LLM Chat",
-    "MultimodalUnload": "Backend Unload",
+    "Qwen38VLLoader": "Qwen3.8 VL Local Loader",
+    "VisionAPIEnv": "OpenAI-Compatible API · Environment Variable",
+    "VisionAPIDirect": "OpenAI-Compatible API · Direct Key",
+    "VisionChat": "Vision LLM Chat",
+    "VisionUnload": "Backend Unload",
 }

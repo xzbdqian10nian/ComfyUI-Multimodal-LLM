@@ -1,31 +1,31 @@
 {
-  "MultimodalQwen38Loader": {
+  "Qwen38VLLoader": {
     "display_name": "Qwen3.8 VL · 本地加载器",
     "description": "通过 CUDA llama.cpp 加载本地 Qwen3.8 GGUF 主模型和视觉投影模型。",
     "inputs": {
       "model_file": {
         "name": "主模型文件",
-        "tooltip": "Qwen3.8 主模型 GGUF 文件。当前 32GB 显存推荐使用 Q4_K_M。"
+        "tooltip": "Qwen3.8 主模型 GGUF 文件。32GB 显存可先从 Q4_K_M 开始。"
       },
       "mmproj_file": {
         "name": "视觉投影模型",
-        "tooltip": "图片与视频帧理解必需的多模态 projector GGUF 文件。"
+        "tooltip": "理解图片和视频帧所必需的视觉投影 GGUF 文件。"
       },
       "batch_size": {
         "name": "批处理大小",
-        "tooltip": "提示词预填充批次大小。调高可能更快，但会增加显存占用。"
+        "tooltip": "每次 llama.cpp 批处理中处理的提示词 token 数。调高可能提升提示词处理速度，但会增加显存占用。"
       },
       "micro_batch_size": {
         "name": "微批次大小",
-        "tooltip": "llama.cpp 实际计算的微批次大小。预填充阶段爆显存时优先调低此项。"
+        "tooltip": "每个 llama.cpp 物理微批次最多处理的 token 数。提示词处理爆显存时优先调低此项。"
       },
       "gpu_layers": {
         "name": "GPU 层数",
-        "tooltip": "卸载到 GPU 的模型层数。-1 表示全部放到 GPU；需要部分卸载时可调低。"
+        "tooltip": "卸载到 GPU 的 Transformer 层数。-1 表示全部卸载；需要部分卸载时调低此值。"
       },
       "free_comfy_vram": {
         "name": "释放 ComfyUI 显存",
-        "tooltip": "加载大型视觉语言模型前，先卸载 ComfyUI 已加载的扩散模型。"
+        "tooltip": "加载大型本地视觉语言模型前，先卸载 ComfyUI 的扩散模型。"
       }
     },
     "outputs": {
@@ -35,17 +35,17 @@
       },
       "1": {
         "name": "后端信息",
-        "tooltip": "实际选择的主模型、视觉投影模型、GPU 层数和后端状态。"
+        "tooltip": "实际主模型、视觉投影模型、GPU 层数设置和后端状态。"
       }
     }
   },
-  "MultimodalAPIEnv": {
+  "VisionAPIEnv": {
     "display_name": "OpenAI 兼容 API · 环境变量",
     "description": "使用环境变量中的 API 密钥发送一次文本、单图、多图、视频帧或 VIDEO 请求。",
     "inputs": {
       "base_url": {
         "name": "接口基础地址",
-        "tooltip": "OpenAI 兼容接口的 base URL，不要包含 /chat/completions。环境变量 Key 模式只能访问管理员允许的主机。"
+        "tooltip": "OpenAI 兼容接口的 base URL，不要包含 /chat/completions。环境变量节点只能访问管理员允许列表中的主机。"
       },
       "model": {
         "name": "模型名称",
@@ -55,17 +55,17 @@
         "name": "密钥环境变量",
         "tooltip": "保存 API 密钥的环境变量名称；请求主机必须在管理员允许列表中。"
       },
-      "system_prompt": {
-        "name": "系统提示词",
-        "tooltip": "可选的系统级指令；留空使用服务商默认行为。"
-      },
       "prompt": {
-        "name": "提示词",
-        "tooltip": "发送给 API 的文字指令，可同时附带图片或视频。"
+        "name": "用户输入",
+        "tooltip": "发送给 API 的用户指令，可同时附带图片或视频输入。"
+      },
+      "system_prompt": {
+        "name": "人设 / 系统提示词",
+        "tooltip": "可选的人设和系统级指令；留空则使用服务商默认行为。"
       },
       "max_tokens": {
-        "name": "最大输出 Tokens",
-        "tooltip": "最大输出 token 数。设为 0 表示不发送此参数，使用服务商默认值。"
+        "name": "最大输出 token 数",
+        "tooltip": "输出 token 数上限。设为 0 表示不发送此参数，使用服务商默认值。"
       },
       "temperature": {
         "name": "随机度",
@@ -73,15 +73,15 @@
       },
       "seed": {
         "name": "随机种子",
-        "tooltip": "随机种子。服务商支持 seed 时，可用于尽量复现采样结果。"
+        "tooltip": "服务商支持时发送的采样种子；服务商也可能忽略它。"
       },
       "max_video_frames": {
         "name": "最多视频帧数",
-        "tooltip": "VIDEO 按视频帧发送时，均匀抽取的最大帧数。"
+        "tooltip": "VIDEO 转为视频帧时均匀抽取的最大帧数；不会限制 IMAGE 批次。"
       },
       "video_transport": {
         "name": "视频传输方式",
-        "tooltip": "选择抽帧、原生 video_url，或自动尝试原生视频。"
+        "tooltip": "选择抽帧、原生 video_url 或自动回退到抽帧；服务商必须支持所选格式。"
       },
       "image": {
         "name": "可选图片或批次",
@@ -93,7 +93,7 @@
       },
       "video": {
         "name": "视频",
-        "tooltip": "ComfyUI VIDEO 输入；通用场景选抽帧，服务商支持原生视频时可选 video_url。"
+        "tooltip": "ComfyUI VIDEO 输入；通用场景选抽帧，只有服务商支持原生视频时才选 video_url。"
       }
     },
     "outputs": {
@@ -111,7 +111,7 @@
       }
     }
   },
-  "MultimodalAPIDirect": {
+  "VisionAPIDirect": {
     "display_name": "OpenAI 兼容 API · 直接 Key",
     "description": "使用节点中填写的 API 密钥发送一次文本、单图、多图、视频帧或 VIDEO 请求。",
     "inputs": {
@@ -125,19 +125,19 @@
       },
       "api_key": {
         "name": "API 密钥",
-        "tooltip": "本次请求使用的 API 密钥，不读取环境变量。"
-      },
-      "system_prompt": {
-        "name": "系统提示词",
-        "tooltip": "可选的系统级指令；留空使用服务商默认行为。"
+        "tooltip": "本次请求使用的 API 密钥；不读取环境变量。"
       },
       "prompt": {
-        "name": "提示词",
-        "tooltip": "发送给 API 的文字指令，可同时附带图片或视频。"
+        "name": "用户输入",
+        "tooltip": "发送给 API 的用户指令，可同时附带图片或视频输入。"
+      },
+      "system_prompt": {
+        "name": "人设 / 系统提示词",
+        "tooltip": "可选的人设和系统级指令；留空则使用服务商默认行为。"
       },
       "max_tokens": {
-        "name": "最大输出 Tokens",
-        "tooltip": "最大输出 token 数。设为 0 表示不发送此参数，使用服务商默认值。"
+        "name": "最大输出 token 数",
+        "tooltip": "输出 token 数上限。设为 0 表示不发送此参数，使用服务商默认值。"
       },
       "temperature": {
         "name": "随机度",
@@ -145,15 +145,15 @@
       },
       "seed": {
         "name": "随机种子",
-        "tooltip": "随机种子。服务商支持 seed 时，可用于尽量复现采样结果。"
+        "tooltip": "服务商支持时发送的采样种子；服务商也可能忽略它。"
       },
       "max_video_frames": {
         "name": "最多视频帧数",
-        "tooltip": "VIDEO 按视频帧发送时，均匀抽取的最大帧数。"
+        "tooltip": "VIDEO 转为视频帧时均匀抽取的最大帧数；不会限制 IMAGE 批次。"
       },
       "video_transport": {
         "name": "视频传输方式",
-        "tooltip": "选择抽帧、原生 video_url，或自动尝试原生视频。"
+        "tooltip": "选择抽帧、原生 video_url 或自动回退到抽帧；服务商必须支持所选格式。"
       },
       "image": {
         "name": "可选图片或批次",
@@ -165,7 +165,7 @@
       },
       "video": {
         "name": "视频",
-        "tooltip": "ComfyUI VIDEO 输入；通用场景选抽帧，服务商支持原生视频时可选 video_url。"
+        "tooltip": "ComfyUI VIDEO 输入；通用场景选抽帧，只有服务商支持原生视频时才选 video_url。"
       }
     },
     "outputs": {
@@ -183,65 +183,65 @@
       }
     }
   },
-  "MultimodalChat": {
-    "display_name": "Vision LLM · 多模态对话",
+  "VisionChat": {
+    "display_name": "Vision LLM · 对话",
     "description": "把文字、图片或视频发送给本地模型或 OpenAI 兼容 API 后端。",
     "inputs": {
       "backend": {
         "name": "后端",
         "tooltip": "连接 Qwen3.8 VL 本地加载器或任意 OpenAI 兼容 API 后端。"
       },
-      "system_prompt": {
-        "name": "系统提示词",
-        "tooltip": "控制模型角色、回答方式和输出格式的系统级指令。"
-      },
       "prompt": {
-        "name": "提示词",
+        "name": "用户输入",
         "tooltip": "与图片或视频内容一起发送给模型的用户指令。"
+      },
+      "system_prompt": {
+        "name": "人设 / 系统提示词",
+        "tooltip": "控制模型角色、回答方式和输出格式的人设及系统级指令。"
       },
       "thinking_mode": {
         "name": "思考模式",
-        "tooltip": "使用后端默认设置，或强制开启 thinking / instruct 模式。"
+        "tooltip": "使用后端默认设置，或强制开启思考输出 / 直接指令模式。本地 Qwen3.8 默认使用直接指令模式。"
       },
       "context_length": {
         "name": "上下文长度",
-        "tooltip": "本地 llama.cpp 用于提示词、媒体 token 和回答的上下文窗口；修改后会重新加载本地模型。"
+        "tooltip": "本地 llama.cpp 用于提示词、媒体 token 和回答的上下文窗口；API 后端忽略此项，修改后会重新加载已加载的本地模型。"
       },
       "max_tokens": {
-        "name": "最大输出 Tokens",
-        "tooltip": "本次最多生成多少个新文本 token；这是上限，模型正常结束回答时会提前停止。"
+        "name": "最大输出 token 数",
+        "tooltip": "最多生成的新文本 token 数。这只是上限；模型正常结束回答时会提前停止。"
       },
       "temperature": {
         "name": "随机度",
-        "tooltip": "控制采样随机性。数值越低越稳定，越高越多样。"
+        "tooltip": "控制采样随机性。数值越低越稳定，越高越多样；本地模型设为 0 时，在后端支持的情况下使用确定性的贪心采样。"
       },
       "top_p": {
         "name": "Top P",
-        "tooltip": "核采样概率阈值。0.95 是常用默认值。"
+        "tooltip": "核采样概率阈值。数值越低，保留的候选 token 越少；0.95 是常用的通用默认值。"
       },
       "top_k": {
         "name": "Top K",
-        "tooltip": "每一步只在概率最高的 K 个候选 token 中采样；支持时设为 0 可关闭。"
+        "tooltip": "本地 llama.cpp 只在概率最高的 K 个候选 token 中采样。0 表示关闭 Top-K 筛选；API 后端忽略此项。"
       },
       "min_p": {
         "name": "Min P",
-        "tooltip": "丢弃相对最佳 token 概率过低的候选项。"
+        "tooltip": "本地 llama.cpp 会丢弃概率低于最佳 token 概率该比例的候选项；API 后端忽略此项。"
       },
       "repeat_penalty": {
         "name": "重复惩罚",
-        "tooltip": "降低重复文本概率。1.0 表示不使用重复惩罚。"
+        "tooltip": "本地 llama.cpp 会降低重复文本的概率。1.0 表示关闭重复惩罚；API 后端忽略此项。"
       },
       "seed": {
         "name": "随机种子",
-        "tooltip": "其他输入一致时用于复现采样结果；可使用 ComfyUI 的生成后固定、递增、递减或随机选项。"
+        "tooltip": "其他输入和后端设置一致时用于复现采样结果；API 服务商可能忽略此项。"
       },
       "max_video_frames": {
         "name": "最多视频帧数",
-        "tooltip": "从视频中均匀抽取并发送给模型的最大帧数。"
+        "tooltip": "VIDEO 转为视频帧时均匀抽取并发送给模型的最大帧数；不会限制 IMAGE 批次。"
       },
       "video_transport": {
         "name": "视频传输方式",
-        "tooltip": "API 可尝试原生 video_url 或使用抽帧；本地模型始终使用抽帧。"
+        "tooltip": "API 后端可选择自动尝试原生视频、抽帧或原生 video_url；本地模型始终使用抽帧。"
       },
       "unload_after": {
         "name": "生成后卸载",
@@ -253,11 +253,11 @@
       },
       "video_frames": {
         "name": "视频帧",
-        "tooltip": "已解码成 ComfyUI IMAGE 批次的视频帧。"
+        "tooltip": "解码后的 ComfyUI IMAGE 视频帧批次；会按最多视频帧数抽样。"
       },
       "video": {
         "name": "视频",
-        "tooltip": "ComfyUI VIDEO 对象；本地推理时插件会自动均匀抽帧。"
+        "tooltip": "ComfyUI VIDEO 对象；本地模型会将其抽帧，API 后端按视频传输方式处理。"
       },
       "tools_json": {
         "name": "工具定义 JSON",
@@ -283,7 +283,7 @@
       }
     }
   },
-  "MultimodalUnload": {
+  "VisionUnload": {
     "display_name": "后端卸载",
     "description": "主动卸载本地模型，或关闭 API 客户端。",
     "inputs": {

@@ -1,4 +1,4 @@
-"""Backend adapters for the ComfyUI Multimodal LLM plugin.
+"""Backend adapters for the ComfyUI Qwen3.8 VL plugin.
 
 The node layer deliberately talks to a very small interface (``complete`` and
 ``unload``).  This keeps local llama.cpp models and OpenAI-compatible APIs
@@ -32,7 +32,7 @@ def _free_comfy_vram() -> None:
         mm.unload_all_models()
         mm.soft_empty_cache()
     except Exception as exc:
-        print(f"[ComfyUI-Multimodal-LLM] ComfyUI VRAM cleanup skipped: {exc}")
+        print(f"[ComfyUI-Qwen3.8-VL] ComfyUI VRAM cleanup skipped: {exc}")
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -140,7 +140,7 @@ _ACTIVE_LOCAL_BACKEND: weakref.ReferenceType | None = None
 
 
 class LocalQwen38Backend:
-    """Qwen3.8 GGUF + multimodal projector through CUDA llama.cpp."""
+    """Qwen3.8 GGUF + image/video projector through CUDA llama.cpp."""
 
     backend_kind = "local_llama_cpp"
 
@@ -164,7 +164,7 @@ class LocalQwen38Backend:
         with self._lock:
             if self.llm is not None and (self.n_ctx != n_ctx or self.thinking != thinking):
                 print(
-                    "[ComfyUI-Multimodal-LLM] Chat context/mode changed; "
+                    "[ComfyUI-Qwen3.8-VL] Chat context/mode changed; "
                     "reloading the local model"
                 )
                 self.unload()
@@ -178,7 +178,7 @@ class LocalQwen38Backend:
             previous = _ACTIVE_LOCAL_BACKEND() if _ACTIVE_LOCAL_BACKEND is not None else None
             if previous is not None and previous is not self:
                 print(
-                    "[ComfyUI-Multimodal-LLM] Model selection changed; "
+                    "[ComfyUI-Qwen3.8-VL] Model selection changed; "
                     "unloading the previous local model first"
                 )
                 previous.unload()
@@ -203,7 +203,7 @@ class LocalQwen38Backend:
             use_gpu=self.settings.n_gpu_layers != 0,
             verbose=False,
         )
-        # llama-cpp-python's current MTMD multimodal formatter builds its own
+        # llama-cpp-python's current MTMD formatter builds its own
         # sandboxed Jinja environment but, unlike Jinja2ChatFormatter, some
         # releases omit the standard Hugging Face template helpers. Qwen3.8's
         # thinking template calls raise_exception, so register the two helpers
@@ -236,7 +236,7 @@ class LocalQwen38Backend:
 
             started = time.perf_counter()
             print(
-                "[ComfyUI-Multimodal-LLM] Loading "
+                "[ComfyUI-Qwen3.8-VL] Loading "
                 f"{self.settings.model_path.name}, ctx={self.n_ctx}, "
                 f"gpu_layers={self.settings.n_gpu_layers}"
             )
@@ -263,12 +263,12 @@ class LocalQwen38Backend:
                         progress_callback(f"weights_wait:{elapsed:.0f}", 0.25)
                     else:
                         print(
-                            "[ComfyUI-Multimodal-LLM] Loading weights still in progress "
+                            "[ComfyUI-Qwen3.8-VL] Loading weights still in progress "
                             f"({elapsed:.0f}s elapsed; llama.cpp has no byte-level callback)",
                             flush=True,
                         )
 
-            heartbeat = threading.Thread(target=_load_heartbeat, name="multimodel-load-progress", daemon=True)
+            heartbeat = threading.Thread(target=_load_heartbeat, name="vision-llm-load-progress", daemon=True)
             heartbeat.start()
             try:
                 try:
@@ -316,7 +316,7 @@ class LocalQwen38Backend:
             self.load_seconds = time.perf_counter() - started
             if callable(progress_callback):
                 progress_callback("ready", 1.0)
-            print(f"[ComfyUI-Multimodal-LLM] Local model loaded in {self.load_seconds:.1f}s")
+            print(f"[ComfyUI-Qwen3.8-VL] Local model loaded in {self.load_seconds:.1f}s")
 
     def complete(self, **kwargs):
         with self._lock:
@@ -357,7 +357,7 @@ class LocalQwen38Backend:
                 active = _ACTIVE_LOCAL_BACKEND() if _ACTIVE_LOCAL_BACKEND is not None else None
                 if active is self:
                     _ACTIVE_LOCAL_BACKEND = None
-            print("[ComfyUI-Multimodal-LLM] Local model unloaded")
+            print("[ComfyUI-Qwen3.8-VL] Local model unloaded")
 
     def __del__(self):
         try:

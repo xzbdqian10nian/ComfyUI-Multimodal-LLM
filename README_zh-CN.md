@@ -46,7 +46,7 @@ git -C ComfyUI-Qwen3.8-VL pull --ff-only
 | `Vision LLM Chat` | 向选定后端发送文本、图片、图片批次、视频帧或 ComfyUI `VIDEO`。 |
 | `Backend Unload` | 主动释放本地模型或关闭 API 后端。 |
 
-节点内部 type 保持稳定以兼容旧工作流；界面展示名称已精简并与具体 API 服务商无关。
+节点名称与具体 API 服务商无关：本地加载器专用于 Qwen3.8，API 节点可调用兼容的视觉接口。
 
 ## 本地 Qwen3.8 VL 模型
 

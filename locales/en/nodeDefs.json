@@ -1,31 +1,31 @@
 {
-  "MultimodalQwen38Loader": {
+  "Qwen38VLLoader": {
     "display_name": "Qwen3.8 VL Local Loader",
     "description": "Loads a local Qwen3.8 GGUF model and its vision projector with CUDA llama.cpp.",
     "inputs": {
       "model_file": {
-        "name": "model file",
-        "tooltip": "Main Qwen3.8 GGUF model file. Q4_K_M is the current 32 GB VRAM baseline."
+        "name": "main model file",
+        "tooltip": "Main Qwen3.8 GGUF model file. Q4_K_M is a practical starting point for 32 GB VRAM."
       },
       "mmproj_file": {
         "name": "vision projector",
-        "tooltip": "Multimodal projector GGUF required for image and video-frame understanding."
+        "tooltip": "Vision projector GGUF required to understand images and video frames."
       },
       "batch_size": {
         "name": "batch size",
-        "tooltip": "Prompt-processing batch size. Higher can be faster but uses more VRAM."
+        "tooltip": "Number of prompt tokens processed in one llama.cpp batch. Higher can improve prompt processing speed but uses more VRAM."
       },
       "micro_batch_size": {
         "name": "micro batch size",
-        "tooltip": "Physical llama.cpp micro-batch size. Reduce this first if prompt processing runs out of VRAM."
+        "tooltip": "Maximum tokens processed in one physical llama.cpp sub-batch. Reduce this first if prompt processing runs out of VRAM."
       },
       "gpu_layers": {
         "name": "GPU layers",
-        "tooltip": "Layers offloaded to the GPU. -1 offloads all layers; lower this value when partial GPU offload is needed."
+        "tooltip": "Number of transformer layers offloaded to the GPU. -1 offloads all layers; lower it for partial GPU offload."
       },
       "free_comfy_vram": {
         "name": "free ComfyUI VRAM",
-        "tooltip": "Unload ComfyUI diffusion models before loading this large local VLM."
+        "tooltip": "Unload ComfyUI diffusion models before loading this large local vision-language model."
       }
     },
     "outputs": {
@@ -35,17 +35,17 @@
       },
       "1": {
         "name": "backend info",
-        "tooltip": "Resolved model, projector, GPU layers, and backend state."
+        "tooltip": "Resolved main model, vision projector, GPU-layer setting, and backend state."
       }
     }
   },
-  "MultimodalAPIEnv": {
+  "VisionAPIEnv": {
     "display_name": "OpenAI-Compatible API · Environment Variable",
-    "description": "Sends one simple text, image, image-batch, video-frame, or VIDEO request using an API key from an environment variable.",
+    "description": "Sends one text, image, image-batch, video-frame, or VIDEO request using an API key from an environment variable.",
     "inputs": {
       "base_url": {
         "name": "base URL",
-        "tooltip": "OpenAI-compatible API base URL; do not include /chat/completions. Environment-key mode only permits the administrator's host allow-list."
+        "tooltip": "OpenAI-compatible API base URL; do not include /chat/completions. The environment-key node only permits the administrator's host allow-list."
       },
       "model": {
         "name": "model",
@@ -53,19 +53,19 @@
       },
       "api_key_env": {
         "name": "API key environment variable",
-        "tooltip": "Environment variable containing the API key. Its request host must be administrator-allow-listed."
-      },
-      "system_prompt": {
-        "name": "system prompt",
-        "tooltip": "Optional system instruction; leave blank for provider defaults."
+        "tooltip": "Environment variable containing the API key. The request host must be administrator-allow-listed."
       },
       "prompt": {
-        "name": "prompt",
-        "tooltip": "Text instruction sent to the API, together with any attached image or video input."
+        "name": "user prompt",
+        "tooltip": "User instruction sent to the API, together with any attached image or video input."
+      },
+      "system_prompt": {
+        "name": "persona / system prompt",
+        "tooltip": "Optional persona and system-level instruction; leave blank to use the provider default."
       },
       "max_tokens": {
         "name": "max output tokens",
-        "tooltip": "Maximum output tokens. 0 omits this parameter and uses the provider default."
+        "tooltip": "Maximum output token count. 0 omits this parameter and uses the provider default."
       },
       "temperature": {
         "name": "temperature",
@@ -73,15 +73,15 @@
       },
       "seed": {
         "name": "seed",
-        "tooltip": "Random seed. Providers that support seed can use it for repeatable sampling."
+        "tooltip": "Seed sent for sampling when the provider supports it; providers may ignore it."
       },
       "max_video_frames": {
         "name": "max video frames",
-        "tooltip": "Maximum evenly sampled frames used when VIDEO is sent as frames."
+        "tooltip": "Maximum number of evenly sampled frames used when a VIDEO input is converted to frames. It does not limit an IMAGE batch."
       },
       "video_transport": {
         "name": "video transport",
-        "tooltip": "Choose sampled image frames, native video_url, or automatic native-video fallback."
+        "tooltip": "Choose sampled image frames, native video_url, or automatic native-video fallback. The provider must support the selected format."
       },
       "image": {
         "name": "optional image or batch",
@@ -93,7 +93,7 @@
       },
       "video": {
         "name": "video",
-        "tooltip": "ComfyUI VIDEO input; choose frames for broad compatibility or video_url for native-video providers."
+        "tooltip": "ComfyUI VIDEO input; use frames for broad support or video_url only when the provider supports native video."
       }
     },
     "outputs": {
@@ -103,7 +103,7 @@
       },
       "1": {
         "name": "usage",
-        "tooltip": "Token usage JSON returned by the provider, when available."
+        "tooltip": "Token-usage JSON returned by the provider, when available."
       },
       "2": {
         "name": "stats",
@@ -111,9 +111,9 @@
       }
     }
   },
-  "MultimodalAPIDirect": {
+  "VisionAPIDirect": {
     "display_name": "OpenAI-Compatible API · Direct Key",
-    "description": "Sends one simple text, image, image-batch, video-frame, or VIDEO request using a key entered in the node.",
+    "description": "Sends one text, image, image-batch, video-frame, or VIDEO request using a key entered in the node.",
     "inputs": {
       "base_url": {
         "name": "base URL",
@@ -127,17 +127,17 @@
         "name": "API key",
         "tooltip": "API key used for this request; environment variables are not read."
       },
-      "system_prompt": {
-        "name": "system prompt",
-        "tooltip": "Optional system instruction; leave blank for provider defaults."
-      },
       "prompt": {
-        "name": "prompt",
-        "tooltip": "Text instruction sent to the API, together with any attached image or video input."
+        "name": "user prompt",
+        "tooltip": "User instruction sent to the API, together with any attached image or video input."
+      },
+      "system_prompt": {
+        "name": "persona / system prompt",
+        "tooltip": "Optional persona and system-level instruction; leave blank to use the provider default."
       },
       "max_tokens": {
         "name": "max output tokens",
-        "tooltip": "Maximum output tokens. 0 omits this parameter and uses the provider default."
+        "tooltip": "Maximum output token count. 0 omits this parameter and uses the provider default."
       },
       "temperature": {
         "name": "temperature",
@@ -145,15 +145,15 @@
       },
       "seed": {
         "name": "seed",
-        "tooltip": "Random seed. Providers that support seed can use it for repeatable sampling."
+        "tooltip": "Seed sent for sampling when the provider supports it; providers may ignore it."
       },
       "max_video_frames": {
         "name": "max video frames",
-        "tooltip": "Maximum evenly sampled frames used when VIDEO is sent as frames."
+        "tooltip": "Maximum number of evenly sampled frames used when a VIDEO input is converted to frames. It does not limit an IMAGE batch."
       },
       "video_transport": {
         "name": "video transport",
-        "tooltip": "Choose sampled image frames, native video_url, or automatic native-video fallback."
+        "tooltip": "Choose sampled image frames, native video_url, or automatic native-video fallback. The provider must support the selected format."
       },
       "image": {
         "name": "optional image or batch",
@@ -165,7 +165,7 @@
       },
       "video": {
         "name": "video",
-        "tooltip": "ComfyUI VIDEO input; choose frames for broad compatibility or video_url for native-video providers."
+        "tooltip": "ComfyUI VIDEO input; use frames for broad support or video_url only when the provider supports native video."
       }
     },
     "outputs": {
@@ -175,7 +175,7 @@
       },
       "1": {
         "name": "usage",
-        "tooltip": "Token usage JSON returned by the provider, when available."
+        "tooltip": "Token-usage JSON returned by the provider, when available."
       },
       "2": {
         "name": "stats",
@@ -183,81 +183,81 @@
       }
     }
   },
-  "MultimodalChat": {
-    "display_name": "Vision LLM · Multimodal Chat",
+  "VisionChat": {
+    "display_name": "Vision LLM Chat",
     "description": "Sends text, images, or video to either a local model or an OpenAI-compatible API backend.",
     "inputs": {
       "backend": {
         "name": "backend",
         "tooltip": "Connect the Qwen3.8 VL local loader or any OpenAI-compatible API backend."
       },
-      "system_prompt": {
-        "name": "system prompt",
-        "tooltip": "System-level behavior and response-format instruction."
-      },
       "prompt": {
-        "name": "prompt",
-        "tooltip": "User instruction sent with the attached image/video content."
+        "name": "user prompt",
+        "tooltip": "User instruction sent with the attached image or video content."
+      },
+      "system_prompt": {
+        "name": "persona / system prompt",
+        "tooltip": "Persona and system-level behavior or response-format instruction."
       },
       "thinking_mode": {
         "name": "thinking mode",
-        "tooltip": "Use backend setting, force reasoning mode, or force direct instruct mode."
+        "tooltip": "Use the backend default, force reasoning output, or force direct instruct mode. Local Qwen3.8 defaults to direct instruct mode."
       },
       "context_length": {
         "name": "context length",
-        "tooltip": "Local llama.cpp context window for prompt, media tokens, and response. Changing it reloads the local model."
+        "tooltip": "Local llama.cpp context window for the prompt, media tokens, and response. API backends ignore it; changing it reloads a loaded local model."
       },
       "max_tokens": {
-        "name": "max tokens",
-        "tooltip": "Maximum number of new text tokens to generate; this is only a limit and generation stops early when the answer is complete."
+        "name": "max output tokens",
+        "tooltip": "Maximum number of new text tokens to generate. This is only a limit; generation still stops when the model finishes its answer."
       },
       "temperature": {
         "name": "temperature",
-        "tooltip": "Sampling randomness. Lower values are steadier; higher values are more varied."
+        "tooltip": "Sampling randomness. Lower values are steadier; higher values are more varied. With a local model, 0 uses deterministic greedy sampling when supported."
       },
       "top_p": {
         "name": "top P",
-        "tooltip": "Nucleus sampling threshold. 0.95 is a strong general default."
+        "tooltip": "Nucleus-sampling probability threshold. Lower values keep only more likely tokens; 0.95 is a strong general default."
       },
       "top_k": {
         "name": "top K",
-        "tooltip": "Restrict each token choice to the top K candidates. 0 disables it when supported."
+        "tooltip": "For local llama.cpp, restrict each token choice to the top K candidates. 0 disables top-K filtering; API backends ignore it."
       },
       "min_p": {
         "name": "min P",
-        "tooltip": "Discard tokens whose probability is too small relative to the best token."
+        "tooltip": "For local llama.cpp, discard tokens whose probability is below this fraction of the best token probability. API backends ignore it."
       },
       "repeat_penalty": {
         "name": "repeat penalty",
-        "tooltip": "Penalizes repeated text. 1.0 disables the penalty."
+        "tooltip": "For local llama.cpp, penalize repeated text. 1.0 disables the penalty; API backends ignore it."
       },
       "seed": {
         "name": "seed",
-        "tooltip": "Random seed used for reproducible sampling when all other inputs match. ComfyUI can keep, increment, decrement, or randomize it after generation."
+        "tooltip": "Random seed for reproducible sampling when all other inputs and backend settings match. API providers may ignore it."
       },
       "max_video_frames": {
         "name": "max video frames",
-        "tooltip": "Maximum number of evenly sampled video frames sent to the model."
+        "tooltip": "Maximum number of evenly sampled frames used when a VIDEO input is converted to frames. It does not limit an IMAGE batch."
       },
       "video_transport": {
         "name": "video transport",
-        "tooltip": "API video mode: native data URL when supported, or sampled frames. Local models always use frames."
+        "tooltip": "For API backends, choose automatic native video when available, sampled image frames, or native video_url. Local models always use frames."
       },
       "unload_after": {
         "name": "unload after",
-        "tooltip": "Release this backend after generation. Enable to recover VRAM, disable for faster repeated chats."
+        "tooltip": "Release this backend after generation. Enable to recover VRAM; disable for faster repeated chats."
       },
       "image": {
         "name": "image",
-        "tooltip": "One image or an IMAGE batch of still images."
+        "tooltip": "One still image or an IMAGE batch of still images."
       },
       "video_frames": {
         "name": "video frames",
-        "tooltip": "Decoded video frames as a ComfyUI IMAGE batch."
+        "tooltip": "Decoded video frames as a ComfyUI IMAGE batch; the batch is sampled according to max video frames."
       },
       "video": {
         "name": "video",
-        "tooltip": "ComfyUI VIDEO object; locally it is sampled into frames."
+        "tooltip": "ComfyUI VIDEO object; local models sample it into frames, while API transport follows video transport."
       },
       "tools_json": {
         "name": "tools JSON",
@@ -283,7 +283,7 @@
       }
     }
   },
-  "MultimodalUnload": {
+  "VisionUnload": {
     "display_name": "Backend Unload",
     "description": "Explicitly unloads a local model or closes an API client.",
     "inputs": {
