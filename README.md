@@ -84,6 +84,13 @@ Both API nodes send a small OpenAI Chat Completions-compatible request. Configur
 - `image`: an optional single image or `IMAGE` batch;
 - `video_frames` or `video`: optional video input, depending on provider support.
 
+For API nodes, `video_frames` is an `IMAGE` batch and works with providers that
+accept multiple `image_url` parts. `video` is the native ComfyUI `VIDEO` object.
+Use `video_transport = frames` for the broadest compatibility, `video_url` for
+providers that implement the common OpenAI-compatible `video_url` content part,
+or `auto` to try native video when it can be encoded and otherwise send sampled
+frames. The provider still has to support the selected content format.
+
 ### Environment-variable key
 
 Set the variable before starting ComfyUI:

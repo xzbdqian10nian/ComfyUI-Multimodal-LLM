@@ -41,7 +41,7 @@
   },
   "MultimodalAPIEnv": {
     "display_name": "OpenAI 兼容 API · 环境变量",
-    "description": "使用系统环境变量中的 API 密钥发送一次简单的文本或多图请求。",
+    "description": "使用环境变量中的 API 密钥发送一次文本、单图、多图、视频帧或 VIDEO 请求。",
     "inputs": {
       "base_url": {
         "name": "接口基础地址",
@@ -57,7 +57,7 @@
       },
       "prompt": {
         "name": "提示词",
-        "tooltip": "发送给 API 的文字指令；可同时发送图片批次。"
+        "tooltip": "发送给 API 的文字指令，可同时附带图片或视频。"
       },
       "max_tokens": {
         "name": "最大输出 Tokens",
@@ -76,8 +76,24 @@
         "tooltip": "可选的系统级指令；留空使用服务商默认行为。"
       },
       "image": {
-        "name": "可选图像批次",
-        "tooltip": "可接单张图片或 IMAGE 批次；批次中的每张图会在同一个 API 请求中发送。"
+        "name": "可选图片或批次",
+        "tooltip": "单张图片或 IMAGE 批次；每张图都会在同一个 API 请求中发送。"
+      },
+      "max_video_frames": {
+        "name": "最多视频帧数",
+        "tooltip": "VIDEO 按视频帧发送时，均匀抽取的最大帧数。"
+      },
+      "video_transport": {
+        "name": "视频传输方式",
+        "tooltip": "选择抽帧、原生 video_url，或自动尝试原生视频。"
+      },
+      "video_frames": {
+        "name": "视频帧",
+        "tooltip": "解码后的视频 IMAGE 批次；会按最多视频帧数抽样。"
+      },
+      "video": {
+        "name": "视频",
+        "tooltip": "ComfyUI VIDEO 输入；通用场景选抽帧，服务商支持原生视频时可选 video_url。"
       }
     },
     "outputs": {
@@ -97,7 +113,7 @@
   },
   "MultimodalAPIDirect": {
     "display_name": "OpenAI 兼容 API · 直接 Key",
-    "description": "使用节点中直接填写的 API 密钥发送一次简单的文本或多图请求。",
+    "description": "使用节点中填写的 API 密钥发送一次文本、单图、多图、视频帧或 VIDEO 请求。",
     "inputs": {
       "base_url": {
         "name": "接口基础地址",
@@ -109,7 +125,7 @@
       },
       "prompt": {
         "name": "提示词",
-        "tooltip": "发送给 API 的文字指令；可同时发送图片批次。"
+        "tooltip": "发送给 API 的文字指令，可同时附带图片或视频。"
       },
       "max_tokens": {
         "name": "最大输出 Tokens",
@@ -128,12 +144,28 @@
         "tooltip": "可选的系统级指令；留空使用服务商默认行为。"
       },
       "image": {
-        "name": "可选图像批次",
-        "tooltip": "可接单张图片或 IMAGE 批次；批次中的每张图会在同一个 API 请求中发送。"
+        "name": "可选图片或批次",
+        "tooltip": "单张图片或 IMAGE 批次；每张图都会在同一个 API 请求中发送。"
       },
       "api_key": {
         "name": "API 密钥",
         "tooltip": "本次请求使用的 API 密钥，不读取环境变量。"
+      },
+      "max_video_frames": {
+        "name": "最多视频帧数",
+        "tooltip": "VIDEO 按视频帧发送时，均匀抽取的最大帧数。"
+      },
+      "video_transport": {
+        "name": "视频传输方式",
+        "tooltip": "选择抽帧、原生 video_url，或自动尝试原生视频。"
+      },
+      "video_frames": {
+        "name": "视频帧",
+        "tooltip": "解码后的视频 IMAGE 批次；会按最多视频帧数抽样。"
+      },
+      "video": {
+        "name": "视频",
+        "tooltip": "ComfyUI VIDEO 输入；通用场景选抽帧，服务商支持原生视频时可选 video_url。"
       }
     },
     "outputs": {

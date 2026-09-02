@@ -519,7 +519,7 @@ class _MultimodalAPINodeBase:
                     {
                         "default": "",
                         "multiline": True,
-                        "tooltip": "Text instruction sent to the API, together with any attached image batch.",
+                        "tooltip": "Text instruction sent to the API, together with any attached image or video input.",
                     },
                 ),
                 "max_tokens": (
@@ -565,10 +565,39 @@ class _MultimodalAPINodeBase:
                         "tooltip": "Optional system instruction; leave blank for the provider default.",
                     },
                 ),
+                "max_video_frames": (
+                    "INT",
+                    {
+                        "default": 8,
+                        "min": 1,
+                        "max": 64,
+                        "step": 1,
+                        "tooltip": "Maximum number of evenly sampled frames used when VIDEO is sent as frames.",
+                    },
+                ),
+                "video_transport": (
+                    ["frames", "video_url", "auto"],
+                    {
+                        "default": "frames",
+                        "tooltip": "VIDEO transport: sampled image frames, native video_url, or automatic native-video fallback behavior.",
+                    },
+                ),
                 "image": (
                     "IMAGE",
                     {
-                        "tooltip": "Optional image input. Connect one image or an IMAGE batch; each batch item is sent in the same API request.",
+                        "tooltip": "Optional still image input. Connect one image or an IMAGE batch; each item is sent in the same API request.",
+                    },
+                ),
+                "video_frames": (
+                    "IMAGE",
+                    {
+                        "tooltip": "Optional video-frame input as an IMAGE batch. Frames are sampled according to max_video_frames.",
+                    },
+                ),
+                "video": (
+                    "VIDEO",
+                    {
+                        "tooltip": "Optional ComfyUI VIDEO input. Choose frames for broad compatibility or video_url for providers that support native video.",
                     },
                 ),
             },
@@ -584,7 +613,7 @@ class _MultimodalAPINodeBase:
     )
     FUNCTION = "request"
     CATEGORY = "Vision LLM/API"
-    DESCRIPTION = "Sends one simple text or image-batch request to an OpenAI-compatible API."
+    DESCRIPTION = "Sends one simple text, image, image-batch, video-frame, or VIDEO request to an OpenAI-compatible API."
     OUTPUT_NODE = True
 
     def request(
@@ -599,6 +628,10 @@ class _MultimodalAPINodeBase:
         api_key: str = "",
         system_prompt: str = "",
         image: torch.Tensor | None = None,
+        max_video_frames: int = 8,
+        video_transport: str = "frames",
+        video_frames: torch.Tensor | None = None,
+        video: Any | None = None,
         unique_id: str | None = None,
     ):
         backend = OpenAICompatibleBackend(
@@ -642,12 +675,12 @@ class _MultimodalAPINodeBase:
                 0.0,
                 1.0,
                 int(seed),
-                1,
-                "frames",
+                max(1, int(max_video_frames)),
+                video_transport,
                 "backend_default",
                 image,
-                None,
-                None,
+                video_frames,
+                video,
                 None,
                 report_token,
             )

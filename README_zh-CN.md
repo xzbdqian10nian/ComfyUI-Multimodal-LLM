@@ -84,6 +84,12 @@ ComfyUI/models/LLM/Qwen3.8/
 - `image`：可选的单张图片或 `IMAGE` 批次；
 - `video_frames` 或 `video`：可选的视频输入，取决于服务商支持情况。
 
+API 节点中的 `video_frames` 是 `IMAGE` 批次，适合支持多个 `image_url` 内容块的服务商；
+`video` 是 ComfyUI 原生 `VIDEO` 对象。通用兼容性优先选择
+`video_transport = frames`，明确支持 OpenAI-compatible `video_url` 内容块的服务商可选择
+`video_url`，`auto` 则会在视频可以编码时优先尝试原生视频，否则使用抽帧。最终仍取决于服务商
+是否支持对应的视频格式。
+
 ### 环境变量 Key
 
 启动 ComfyUI 前设置：

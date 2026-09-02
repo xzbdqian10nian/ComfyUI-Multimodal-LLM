@@ -34,7 +34,8 @@ function migrateChat(values) {
 }
 
 function migrateSimpleApi(values) {
-    // Both API auth variants ended with max image edge and max image count.
+    // v0.3.x API nodes ended with max image edge and max image count.  Remove
+    // those retired values so current media controls receive their defaults.
     if (
         values.length >= 11 &&
         typeof values.at(-1) === "number" &&

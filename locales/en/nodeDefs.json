@@ -41,7 +41,7 @@
   },
   "MultimodalAPIEnv": {
     "display_name": "OpenAI-Compatible API · Environment Variable",
-    "description": "Sends one simple text or multi-image request using an API key from an environment variable.",
+    "description": "Sends one simple text, image, image-batch, video-frame, or VIDEO request using an API key from an environment variable.",
     "inputs": {
       "base_url": {
         "name": "base URL",
@@ -57,7 +57,7 @@
       },
       "prompt": {
         "name": "prompt",
-        "tooltip": "Text instruction sent to the API; an IMAGE batch can be sent with it."
+        "tooltip": "Text instruction sent to the API, together with any attached image or video input."
       },
       "max_tokens": {
         "name": "max output tokens",
@@ -76,8 +76,24 @@
         "tooltip": "Optional system instruction; leave blank for provider defaults."
       },
       "image": {
-        "name": "optional image batch",
-        "tooltip": "One image or an IMAGE batch; every batch item is sent in the same API request."
+        "name": "optional image or batch",
+        "tooltip": "One still image or an IMAGE batch; every item is sent in the same API request."
+      },
+      "max_video_frames": {
+        "name": "max video frames",
+        "tooltip": "Maximum evenly sampled frames used when VIDEO is sent as frames."
+      },
+      "video_transport": {
+        "name": "video transport",
+        "tooltip": "Choose sampled image frames, native video_url, or automatic native-video fallback."
+      },
+      "video_frames": {
+        "name": "video frames",
+        "tooltip": "Decoded video as an IMAGE batch; frames are sampled according to max video frames."
+      },
+      "video": {
+        "name": "video",
+        "tooltip": "ComfyUI VIDEO input; choose frames for broad compatibility or video_url for native-video providers."
       }
     },
     "outputs": {
@@ -97,7 +113,7 @@
   },
   "MultimodalAPIDirect": {
     "display_name": "OpenAI-Compatible API · Direct Key",
-    "description": "Sends one simple text or multi-image request using a key entered in the node.",
+    "description": "Sends one simple text, image, image-batch, video-frame, or VIDEO request using a key entered in the node.",
     "inputs": {
       "base_url": {
         "name": "base URL",
@@ -109,7 +125,7 @@
       },
       "prompt": {
         "name": "prompt",
-        "tooltip": "Text instruction sent to the API; an IMAGE batch can be sent with it."
+        "tooltip": "Text instruction sent to the API, together with any attached image or video input."
       },
       "max_tokens": {
         "name": "max output tokens",
@@ -128,12 +144,28 @@
         "tooltip": "Optional system instruction; leave blank for provider defaults."
       },
       "image": {
-        "name": "optional image batch",
-        "tooltip": "One image or an IMAGE batch; every batch item is sent in the same API request."
+        "name": "optional image or batch",
+        "tooltip": "One still image or an IMAGE batch; every item is sent in the same API request."
       },
       "api_key": {
         "name": "API key",
         "tooltip": "API key used for this request; environment variables are not read."
+      },
+      "max_video_frames": {
+        "name": "max video frames",
+        "tooltip": "Maximum evenly sampled frames used when VIDEO is sent as frames."
+      },
+      "video_transport": {
+        "name": "video transport",
+        "tooltip": "Choose sampled image frames, native video_url, or automatic native-video fallback."
+      },
+      "video_frames": {
+        "name": "video frames",
+        "tooltip": "Decoded video as an IMAGE batch; frames are sampled according to max video frames."
+      },
+      "video": {
+        "name": "video",
+        "tooltip": "ComfyUI VIDEO input; choose frames for broad compatibility or video_url for native-video providers."
       }
     },
     "outputs": {
